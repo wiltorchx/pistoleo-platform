@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { connectDB } from '@/lib/db';
+import { db } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
-import { Enrollment } from '@/models/Enrollment';
-import { Course } from '@/models/Course';
 import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -26,35 +24,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Demasiadas solicitudes' }, { status: 429 });
     }
 
-    await connectDB();
-
     const { courseId } = await request.json();
     if (!courseId) {
       return NextResponse.json({ message: 'ID del curso requerido' }, { status: 400 });
     }
 
-    const course = await Course.findById(courseId);
-    if (!course || !course.isPublished) {
+    const { data: course, error: courseError } = await db
+      .from('courses')
+      .select('id, price, is_published')
+      .eq('id', courseId)
+      .single();
+
+    if (courseError || !course || !course.is_published) {
       return NextResponse.json({ message: 'Curso no encontrado' }, { status: 404 });
     }
 
-    const existing = await Enrollment.findOne({
-      student: payload.userId,
-      course: courseId,
-    });
+    const { data: existing } = await db
+      .from('enrollments')
+      .select('id')
+      .eq('student_id', payload.userId)
+      .eq('course_id', courseId)
+      .maybeSingle();
 
     if (existing) {
       return NextResponse.json({ message: 'Ya estás inscrito en este curso' }, { status: 409 });
     }
 
-    const enrollment = await Enrollment.create({
-      student: payload.userId,
-      course: courseId,
-      status: 'pending',
-      paymentStatus: 'pending',
-      paymentAmount: course.price,
-      paymentMethod: 'transferencia',
-    });
+    const { data: enrollment, error: enrollError } = await db
+      .from('enrollments')
+      .insert({
+        student_id: payload.userId,
+        course_id: courseId,
+        status: 'pending',
+        payment_status: 'pending',
+        payment_amount: course.price,
+        payment_method: 'transferencia',
+      })
+      .select()
+      .single();
+
+    if (enrollError) throw enrollError;
 
     return NextResponse.json(
       { message: 'Inscripción creada. Debes subir el comprobante de pago.', enrollment },
@@ -79,18 +88,45 @@ export async function GET() {
       return NextResponse.json({ message: 'No autorizado' }, { status: 403 });
     }
 
-    await connectDB();
+    const { data: enrollments, error } = await db
+      .from('enrollments')
+      .select('*, course:courses!enrollments_course_id_fkey(*)')
+      .eq('student_id', payload.userId)
+      .order('created_at', { ascending: false });
 
-    const enrollments = await Enrollment.find({ student: payload.userId })
-      .populate({
-        path: 'course',
-        select: 'title slug thumbnailUrl language level shortDescription price totalDuration tutor',
-        populate: { path: 'tutor', select: 'firstName lastName avatarUrl' },
-      })
-      .sort({ createdAt: -1 })
-      .lean();
+    if (error) throw error;
 
-    return NextResponse.json({ enrollments });
+    const mapped = (enrollments || []).map(e => ({
+      _id: e.id,
+      id: e.id,
+      studentId: e.student_id,
+      courseId: e.course_id,
+      status: e.status,
+      paymentStatus: e.payment_status,
+      paymentAmount: e.payment_amount,
+      paymentMethod: e.payment_method,
+      paymentReceiptUrl: e.payment_receipt_url,
+      progress: e.progress,
+      completedLessons: e.completed_lessons,
+      startedAt: e.started_at,
+      completedAt: e.completed_at,
+      course: e.course ? {
+        _id: e.course.id,
+        title: e.course.title,
+        slug: e.course.slug,
+        thumbnailUrl: e.course.thumbnail_url,
+        language: e.course.language,
+        level: e.course.level,
+        shortDescription: e.course.short_description,
+        price: e.course.price,
+        totalDuration: e.course.total_duration,
+        tutor: e.course.tutor_id,
+      } : null,
+      createdAt: e.created_at,
+      updatedAt: e.updated_at,
+    }));
+
+    return NextResponse.json({ enrollments: mapped });
   } catch (error) {
     console.error('My enrollments error:', error);
     return NextResponse.json({ message: 'Error interno del servidor' }, { status: 500 });

@@ -1,36 +1,48 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { User } from '@/models/User';
+import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '12');
     const skip = (page - 1) * limit;
 
-    const filter: Record<string, unknown> = { role: 'tutor' };
+    let query = db
+      .from('users')
+      .select('id, first_name, last_name, email, role, avatar_url, bio, hourly_rate', { count: 'exact' })
+      .eq('role', 'tutor');
+
     if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { bio: { $regex: search, $options: 'i' } },
-      ];
+      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,bio.ilike.%${search}%`);
     }
 
-    const [tutors, total] = await Promise.all([
-      User.find(filter).select('-password -emailVerificationToken').sort('-createdAt').skip(skip).limit(limit).lean(),
-      User.countDocuments(filter),
-    ]);
+    query = query
+      .order('created_at', { ascending: false })
+      .range(skip, page * limit - 1);
+
+    const { data: tutors, count: total, error } = await query;
+
+    if (error) throw error;
+
+    const mapped = (tutors || []).map(t => ({
+      _id: t.id,
+      id: t.id,
+      firstName: t.first_name,
+      lastName: t.last_name,
+      email: t.email,
+      role: t.role,
+      avatarUrl: t.avatar_url,
+      bio: t.bio,
+      hourlyRate: t.hourly_rate,
+    }));
 
     return NextResponse.json({
-      tutors,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      tutors: mapped,
+      pagination: { page, limit, total: total || 0, totalPages: Math.ceil((total || 0) / limit) },
     });
   } catch (error) {
     console.error('Tutors API error:', error);

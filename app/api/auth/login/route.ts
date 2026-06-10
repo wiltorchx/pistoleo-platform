@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { connectDB } from '@/lib/db';
-import { User } from '@/models/User';
+import { db } from '@/lib/db';
 import { loginSchema } from '@/lib/validations';
 import { signToken } from '@/lib/jwt';
 import { rateLimit } from '@/lib/rateLimit';
@@ -20,13 +19,16 @@ export async function POST(request: Request) {
       );
     }
 
-    await connectDB();
-
     const body = await request.json();
     const validated = loginSchema.parse(body);
 
-    const user = await User.findOne({ email: validated.email });
-    if (!user) {
+    const { data: user, error } = await db
+      .from('users')
+      .select('*')
+      .eq('email', validated.email)
+      .single();
+
+    if (error || !user) {
       return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
     }
 
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     const token = await signToken({
-      userId: user._id.toString(),
+      userId: user.id,
       email: user.email,
       role: user.role,
     });
@@ -52,12 +54,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        id: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
         email: user.email,
         role: user.role,
-        avatarUrl: user.avatarUrl,
+        avatarUrl: user.avatar_url,
       },
     });
   } catch (error) {

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/jwt';
-import { connectDB } from '@/lib/db';
-import { User } from '@/models/User';
+import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -20,21 +19,24 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    await connectDB();
+    const { data: user, error } = await db
+      .from('users')
+      .select('id, first_name, last_name, email, role, avatar_url')
+      .eq('id', payload.userId)
+      .single();
 
-    const user = await User.findById(payload.userId).select('-password');
-    if (!user) {
+    if (error || !user) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
     return NextResponse.json({
       user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        id: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
         email: user.email,
         role: user.role,
-        avatarUrl: user.avatarUrl,
+        avatarUrl: user.avatar_url,
       },
     });
   } catch (error) {

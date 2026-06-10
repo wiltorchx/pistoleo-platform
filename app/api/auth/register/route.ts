@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { connectDB } from '@/lib/db';
-import { User } from '@/models/User';
+import { db } from '@/lib/db';
 import { registerSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -19,12 +18,15 @@ export async function POST(request: Request) {
       );
     }
 
-    await connectDB();
-
     const body = await request.json();
     const validated = registerSchema.parse(body);
 
-    const existingUser = await User.findOne({ email: validated.email });
+    const { data: existingUser } = await db
+      .from('users')
+      .select('id')
+      .eq('email', validated.email)
+      .single();
+
     if (existingUser) {
       return NextResponse.json({ message: 'El email ya está registrado' }, { status: 409 });
     }
@@ -33,17 +35,23 @@ export async function POST(request: Request) {
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    const user = await User.create({
-      firstName: validated.firstName,
-      lastName: validated.lastName,
-      email: validated.email,
-      password: hashedPassword,
-      role: validated.role,
-      termsAccepted: validated.termsAccepted,
-      emailVerificationToken: verificationToken,
-      emailVerificationExpires: verificationExpires,
-      emailVerified: false,
-    });
+    const { data: user, error } = await db
+      .from('users')
+      .insert({
+        first_name: validated.firstName,
+        last_name: validated.lastName,
+        email: validated.email,
+        password: hashedPassword,
+        role: validated.role,
+        terms_accepted: validated.termsAccepted,
+        email_verification_token: verificationToken,
+        email_verification_expires: verificationExpires.toISOString(),
+        email_verified: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     console.log(`Usuario creado: ${user.email}`);
 
@@ -51,9 +59,9 @@ export async function POST(request: Request) {
       {
         message: 'Usuario registrado exitosamente',
         user: {
-          _id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          id: user.id,
+          firstName: user.first_name,
+          lastName: user.last_name,
           email: user.email,
           role: user.role,
         },

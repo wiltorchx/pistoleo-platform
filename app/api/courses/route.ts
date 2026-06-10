@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { Course } from '@/models/Course';
+import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const language = searchParams.get('language');
     const level = searchParams.get('level');
@@ -18,47 +15,85 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '12');
 
-    const filter: Record<string, unknown> = { isPublished: true, isActive: true };
+    let query = db
+      .from('courses')
+      .select('*, tutor:users!courses_tutor_id_fkey(id, first_name, last_name, avatar_url, bio)', { count: 'exact' })
+      .eq('is_published', true)
+      .eq('is_active', true);
 
-    if (language && language !== 'all') filter.language = language;
-    if (level && level !== 'all') filter.level = level;
-    if (search) filter.title = { $regex: search, $options: 'i' };
-
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price = { $gte: parseFloat(minPrice), ...filter.price as object };
-      if (maxPrice) filter.price = { $lte: parseFloat(maxPrice), ...filter.price as object };
+    if (language && language !== 'all') {
+      query = query.eq('language', language);
+    }
+    if (level && level !== 'all') {
+      query = query.eq('level', level);
+    }
+    if (search) {
+      query = query.ilike('title', `%${search}%`);
+    }
+    if (minPrice) {
+      query = query.gte('price', parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      query = query.lte('price', parseFloat(maxPrice));
     }
 
-    const sortOptions: Record<string, string> = {
-      newest: '-createdAt',
-      oldest: 'createdAt',
-      priceAsc: 'price',
-      priceDesc: '-price',
-      popular: '-enrolledCount',
-      rating: '-rating',
+    const sortOptions: Record<string, { column: string; ascending: boolean }> = {
+      newest: { column: 'created_at', ascending: false },
+      oldest: { column: 'created_at', ascending: true },
+      priceAsc: { column: 'price', ascending: true },
+      priceDesc: { column: 'price', ascending: false },
+      popular: { column: 'enrolled_count', ascending: false },
+      rating: { column: 'rating', ascending: false },
     };
 
     const sortOption = sortOptions[sort] || sortOptions.newest;
-    const skip = (page - 1) * limit;
+    query = query
+      .order(sortOption.column, { ascending: sortOption.ascending })
+      .range((page - 1) * limit, page * limit - 1);
 
-    const [courses, total] = await Promise.all([
-      Course.find(filter)
-        .populate('tutor', 'firstName lastName avatarUrl bio')
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Course.countDocuments(filter),
-    ]);
+    const { data: courses, count: total, error } = await query;
+
+    if (error) throw error;
+
+    const mapped = (courses || []).map(c => ({
+      _id: c.id,
+      id: c.id,
+      title: c.title,
+      slug: c.slug,
+      description: c.description,
+      shortDescription: c.short_description,
+      tutor: c.tutor ? {
+        _id: c.tutor.id,
+        firstName: c.tutor.first_name,
+        lastName: c.tutor.last_name,
+        avatarUrl: c.tutor.avatar_url,
+        bio: c.tutor.bio,
+      } : null,
+      thumbnailUrl: c.thumbnail_url,
+      price: c.price,
+      language: c.language,
+      level: c.level,
+      modules: c.modules,
+      totalDuration: c.total_duration,
+      totalLessons: c.total_lessons,
+      isPublished: c.is_published,
+      isActive: c.is_active,
+      category: c.category,
+      tags: c.tags,
+      enrolledCount: c.enrolled_count,
+      rating: c.rating,
+      reviewCount: c.review_count,
+      createdAt: c.created_at,
+      updatedAt: c.updated_at,
+    }));
 
     return NextResponse.json({
-      courses,
+      courses: mapped,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: total || 0,
+        totalPages: Math.ceil((total || 0) / limit),
       },
     });
   } catch (error) {

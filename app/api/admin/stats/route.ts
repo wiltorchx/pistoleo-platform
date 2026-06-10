@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { connectDB } from '@/lib/db';
+import { db } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
-import { User } from '@/models/User';
-import { Enrollment } from '@/models/Enrollment';
 
 export const runtime = 'nodejs';
 
@@ -18,20 +16,35 @@ export async function GET() {
       return NextResponse.json({ message: 'No autorizado' }, { status: 403 });
     }
 
-    await connectDB();
+    const [
+      { count: totalStudents },
+      { count: totalTutors },
+      { count: totalCourses },
+      { count: pendingEnrollments },
+      { data: recentUsers },
+    ] = await Promise.all([
+      db.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+      db.from('users').select('*', { count: 'exact', head: true }).eq('role', 'tutor'),
+      db.from('courses').select('*', { count: 'exact', head: true }),
+      db.from('enrollments').select('*', { count: 'exact', head: true }).eq('payment_status', 'uploaded'),
+      db.from('users').select('id, first_name, last_name, email, role, avatar_url, bio, hourly_rate, created_at').order('created_at', { ascending: false }).limit(10),
+    ]);
 
-    const [totalStudents, totalTutors, totalCourses, pendingEnrollments, recentUsers] =
-      await Promise.all([
-        User.countDocuments({ role: 'student' }),
-        User.countDocuments({ role: 'tutor' }),
-        (await import('@/models/Course')).Course.countDocuments({}),
-        Enrollment.countDocuments({ paymentStatus: 'uploaded' }),
-        User.find().select('-password -emailVerificationToken').sort('-createdAt').limit(10).lean(),
-      ]);
+    const mappedUsers = (recentUsers || []).map(u => ({
+      _id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      email: u.email,
+      role: u.role,
+      avatarUrl: u.avatar_url,
+      bio: u.bio,
+      hourlyRate: u.hourly_rate,
+      createdAt: u.created_at,
+    }));
 
     return NextResponse.json({
       stats: { totalStudents, totalTutors, totalCourses, pendingEnrollments },
-      recentUsers,
+      recentUsers: mappedUsers,
     });
   } catch (error) {
     console.error('Admin stats error:', error);

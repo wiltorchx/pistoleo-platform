@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import { PistoleoBatch } from '@/models/PistoleoBatch';
+import { db } from '@/lib/db';
 import { parseInventoryPdf } from '@/lib/pistoleo/pdfParser';
-import { PistoleoInventory } from '@/models/PistoleoInventory';
-import { PistoleoScan } from '@/models/PistoleoScan';
 import { processScan } from '@/lib/pistoleo/comparisonEngine';
-import { connectDB } from '@/lib/db';
 
 export async function POST(req: Request) {
-  await connectDB(); // Ensure DB connection
-  
   const contentType = req.headers.get('content-type') || '';
-  
+
   try {
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
@@ -20,36 +14,41 @@ export async function POST(req: Request) {
       if (action === 'create-batch') {
         const name = formData.get('name') as string;
         const userId = formData.get('userId') as string;
-        
-        const batch = await PistoleoBatch.create({
-          name,
-          createdBy: new mongoose.Types.ObjectId(userId),
-          status: 'pending',
-        });
-        
+
+        const { data: batch, error } = await db
+          .from('pistoleo_batches')
+          .insert({ name, created_by: userId, status: 'pending' })
+          .select()
+          .single();
+
+        if (error) throw error;
         return NextResponse.json(batch);
       }
 
       if (action === 'upload-pdf') {
         const batchId = formData.get('batchId') as string;
         const file = formData.get('file') as File;
-        
+
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-        
+
         const buffer = Buffer.from(await file.arrayBuffer());
         const items = await parseInventoryPdf(buffer);
-        
+
         const inventoryDocs = items.map(item => ({
-          batchId: new mongoose.Types.ObjectId(batchId),
+          batch_id: batchId,
           upc: item.upc,
           description: item.description,
-          expectedQuantity: item.quantity,
-          actualQuantity: 0,
+          expected_quantity: item.quantity,
+          actual_quantity: 0,
           status: item.quantity > 0 ? 'missing' : 'complete',
         }));
-        
-        await PistoleoInventory.insertMany(inventoryDocs);
-        
+
+        const { error: insertError } = await db
+          .from('pistoleo_inventory')
+          .insert(inventoryDocs);
+
+        if (insertError) throw insertError;
+
         return NextResponse.json({ message: `Imported ${items.length} items` });
       }
     } else {
@@ -57,13 +56,13 @@ export async function POST(req: Request) {
       if (body.action === 'scan') {
         const { batchId, upc, userId } = body;
         const updatedInventory = await processScan(batchId, upc);
-        
-        await PistoleoScan.create({
-          batchId: new mongoose.Types.ObjectId(batchId),
+
+        await db.from('pistoleo_scans').insert({
+          batch_id: batchId,
           upc,
-          userId: new mongoose.Types.ObjectId(userId),
+          user_id: userId,
         });
-        
+
         return NextResponse.json(updatedInventory);
       }
     }

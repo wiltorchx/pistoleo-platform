@@ -1,38 +1,59 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { PistoleoInventory } from '@/models/PistoleoInventory';
+import { db } from '@/lib/db';
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await connectDB();
   try {
     const { id: itemId } = await params;
     const { actualQuantity } = await req.json();
-    
+
     if (actualQuantity === undefined || actualQuantity < 0) {
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 });
     }
-    
-    const inventory = await PistoleoInventory.findById(itemId);
-    if (!inventory) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
-    
-    inventory.actualQuantity = actualQuantity;
-    
-    // Recalculate status
-    if (inventory.actualQuantity === 0) {
-      inventory.status = 'missing';
-    } else if (inventory.actualQuantity < inventory.expectedQuantity) {
-      inventory.status = 'partial';
-    } else if (inventory.actualQuantity === inventory.expectedQuantity) {
-      inventory.status = 'complete';
-    } else {
-      inventory.status = 'over';
+
+    const { data: inventory } = await db
+      .from('pistoleo_inventory')
+      .select('*')
+      .eq('id', itemId)
+      .single();
+
+    if (!inventory) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
-    
-    await inventory.save();
-    return NextResponse.json(inventory);
+
+    let status: string;
+    if (actualQuantity === 0) {
+      status = 'missing';
+    } else if (actualQuantity < inventory.expected_quantity) {
+      status = 'partial';
+    } else if (actualQuantity === inventory.expected_quantity) {
+      status = 'complete';
+    } else {
+      status = 'over';
+    }
+
+    const { data: updated, error } = await db
+      .from('pistoleo_inventory')
+      .update({ actual_quantity: actualQuantity, status })
+      .eq('id', itemId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      _id: updated.id,
+      id: updated.id,
+      batchId: updated.batch_id,
+      upc: updated.upc,
+      description: updated.description,
+      expectedQuantity: updated.expected_quantity,
+      actualQuantity: updated.actual_quantity,
+      status: updated.status,
+      updatedAt: updated.updated_at,
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }

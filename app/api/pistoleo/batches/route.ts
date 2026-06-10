@@ -1,12 +1,26 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { PistoleoBatch } from '@/models/PistoleoBatch';
+import { db } from '@/lib/db';
 
 export async function GET() {
-  await connectDB();
   try {
-    const batches = await PistoleoBatch.find({}).sort({ createdAt: -1 }).lean();
-    return NextResponse.json(batches);
+    const { data: batches, error } = await db
+      .from('pistoleo_batches')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const mapped = (batches || []).map(b => ({
+      _id: b.id,
+      id: b.id,
+      name: b.name,
+      status: b.status,
+      createdBy: b.created_by,
+      createdAt: b.created_at,
+      updatedAt: b.updated_at,
+    }));
+
+    return NextResponse.json(mapped);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
