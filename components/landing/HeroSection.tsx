@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { Barcode, Scan, Package } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { APP_NAME, ROUTES } from '@/shared/utils/constants'
 
 const containerVariants = {
@@ -103,10 +104,12 @@ export function HeroSection() {
           className="relative hidden lg:block"
         >
           <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl border-4 border-white/20 aspect-[4/3]">
-            <img 
+            <Image 
               src="https://images.unsplash.com/photo-1586528116311-ad8de9c20fb1?auto=format&fit=crop&q=80&w=1200" 
               alt="Pistoleo Warehouse" 
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-primary-900/40 to-transparent" />
           </div>
