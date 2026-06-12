@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/atoms/Button';
 import { t } from '@/lib/pistoleo/i18n';
 import * as ExcelJS from 'exceljs';
@@ -8,9 +9,10 @@ import * as ExcelJS from 'exceljs';
 interface PistoleoWizardProps {
   onClose: () => void;
   onComplete: (batchId: string) => void;
+  userId: string;
 }
 
-export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => {
+export const PistoleoWizard = ({ onClose, onComplete, userId }: PistoleoWizardProps) => {
   const router = useRouter();
   const [step, setStep] = React.useState(1);
   const [formData, setFormData] = React.useState({ name: '', batchId: '' });
@@ -33,7 +35,7 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
       const body = new FormData();
       body.append('action', 'create-batch');
       body.append('name', formData.name);
-      body.append('userId', 'admin-id'); // Simplified for now, will use auth context later
+      body.append('userId', userId);
 
       const res = await fetch('/api/pistoleo', { method: 'POST', body });
       const batch = await res.json();

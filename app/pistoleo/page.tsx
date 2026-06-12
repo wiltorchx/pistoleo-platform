@@ -5,6 +5,7 @@ import { Button } from '@/components/atoms/Button';
 import { PistoleoWizard } from '@/components/organisms/PistoleoWizard';
 import { t } from '@/lib/pistoleo/i18n';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Batch {
   _id: string;
@@ -15,6 +16,7 @@ interface Batch {
 
 export default function PistoleoDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,8 +87,9 @@ export default function PistoleoDashboard() {
         </div>
       )}
 
-      {isWizardOpen && (
+      {isWizardOpen && user && (
         <PistoleoWizard 
+          userId={user.id}
           onClose={() => setIsWizardOpen(false)} 
           onComplete={(batchId) => {
             setIsWizardOpen(false);
