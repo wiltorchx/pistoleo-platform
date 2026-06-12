@@ -75,13 +75,27 @@ export default function PistoleoDashboard() {
               <div className="text-sm text-neutral-500">
                 {new Date(batch.createdAt).toLocaleDateString()}
               </div>
-              <Button 
-                variant="outline" 
-                className="w-full rounded-xl" 
-                onClick={() => router.push(`/pistoleo/${batch._id}`)}
-              >
-                Open Session
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 rounded-xl" 
+                  onClick={() => router.push(`/pistoleo/${batch._id}`)}
+                >
+                  Open Session
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="rounded-xl px-3"
+                  onClick={async () => {
+                    if (confirm('¿Eliminar este lote y todos sus datos?')) {
+                      await fetch(`/api/pistoleo/batches?batchId=${batch._id}`, { method: 'DELETE' });
+                      setBatches(batches.filter(b => b._id !== batch._id));
+                    }
+                  }}
+                >
+                  🗑️
+                </Button>
+              </div>
             </div>
           ))}
         </div>

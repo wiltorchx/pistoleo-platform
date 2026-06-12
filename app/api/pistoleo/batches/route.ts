@@ -25,3 +25,42 @@ export async function GET() {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const batchId = searchParams.get('batchId');
+
+    if (!batchId) {
+      return NextResponse.json({ error: 'Missing batchId' }, { status: 400 });
+    }
+
+    // Delete inventory items first (FK cascade should handle this, but being explicit)
+    const { error: invError } = await db
+      .from('pistoleo_inventory')
+      .delete()
+      .eq('batch_id', batchId);
+
+    if (invError) throw invError;
+
+    // Delete scans
+    const { error: scansError } = await db
+      .from('pistoleo_scans')
+      .delete()
+      .eq('batch_id', batchId);
+
+    if (scansError) throw scansError;
+
+    // Delete batch
+    const { error: batchError } = await db
+      .from('pistoleo_batches')
+      .delete()
+      .eq('id', batchId);
+
+    if (batchError) throw batchError;
+
+    return NextResponse.json({ message: 'Batch deleted successfully' });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+  }
+}

@@ -1,5 +1,18 @@
-import { supabase } from '../lib/supabase';
-import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
+async function init() {
+  const { createClient } = await import('@supabase/supabase-js');
+  const bcrypt = (await import('bcryptjs')).default;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  
+  return { supabase, bcrypt };
+}
+
+const { supabase, bcrypt } = await init();
 
 async function seed() {
   const passwordHash = await bcrypt.hash('Test1234', 12);
