@@ -6,19 +6,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+      colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          900: '#0c4a6e'
+          50: '#fefce8',
+          100: '#fef9c3',
+          400: '#facc15', // Vibrant Yellow
+          500: '#eab308',
+          600: '#ca8a04',
+          700: '#a16207',
+          900: '#713f12'
         },
         surface: {
           light: '#ffffff',
           'light-muted': '#f8fafc',
-          dark: '#030712', // Darker black
-          'dark-elevated': '#111827' // Slightly lighter black
+          dark: '#000000', // True black
+          'dark-elevated': '#121212' // Almost black
         },
         success: '#10b981',
         danger: '#ef4444',
