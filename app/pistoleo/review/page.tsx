@@ -1,9 +1,8 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
-import { t } from '@/lib/pistoleo/i18n';
-import { Trash2, Save, AlertCircle, CheckCircle2, PackageSearch } from 'lucide-react';
+import { AlertCircle, Save, PackageSearch, RotateCcw } from 'lucide-react';
 
 interface InventoryItem {
   upc: string;
@@ -16,30 +15,27 @@ export default function InventoryReviewPage() {
   const searchParams = useSearchParams();
   const batchId = searchParams.get('batchId');
   
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
+  const getInitialItems = (): InventoryItem[] => {
     const storedItems = sessionStorage.getItem('pending_inventory');
     if (storedItems) {
-      setItems(JSON.parse(storedItems));
-    } else {
-      setError("No hay datos pendientes de revisión. Por favor, suba un archivo en el Wizard.");
+      try {
+        return JSON.parse(storedItems);
+      } catch {
+        return [];
+      }
     }
-    setIsLoading(false);
-  }, []);
-
-  const handleUpdateItem = (index: number, field: keyof InventoryItem, value: string | number) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
+    return [];
   };
 
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+  const getInitialError = (): string | null => {
+    const storedItems = sessionStorage.getItem('pending_inventory');
+    return storedItems ? null : "No hay datos pendientes de revisión. Por favor, suba un archivo en el Wizard.";
   };
+
+  const [items] = useState<InventoryItem[]>(getInitialItems);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [error, setError] = useState<string | null>(getInitialError);
 
   const handleCommit = async () => {
     if (!batchId) {
@@ -66,7 +62,36 @@ export default function InventoryReviewPage() {
     }
   };
 
-  if (isLoading) return <div className="flex h-screen items-center justify-center">Cargando inventario...</div>;
+  const handleClearInventory = async () => {
+    if (!batchId) {
+      setError("No se encontró el ID del lote.");
+      return;
+    }
+    
+    if (!confirm('¿Eliminar el inventario importado y volver a subir el archivo?')) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const body = new FormData();
+      body.append('action', 'clear-inventory');
+      body.append('batchId', batchId);
+
+      const res = await fetch('/api/pistoleo', { method: 'POST', body });
+      if (!res.ok) throw new Error("Error al limpiar el inventario");
+      
+      // Clear session storage and redirect back to wizard
+      sessionStorage.removeItem('pending_inventory');
+      router.push(`/pistoleo?clear=${batchId}`);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
@@ -77,10 +102,18 @@ export default function InventoryReviewPage() {
               <PackageSearch className="w-8 h-8 text-primary-600" />
               Revisión de Mercadería
             </h1>
-            <p className="text-neutral-500 mt-1">Verifica y ajusta los datos extraídos del PDF antes de confirmar.</p>
+            <p className="text-neutral-500 mt-1">Verifica los datos extraídos del PDF antes de confirmar.</p>
           </div>
           <div className="flex gap-3">
             <Button variant="ghost" onClick={() => router.back()}>Volver</Button>
+            <Button 
+              variant="outline" 
+              disabled={isClearing} 
+              onClick={handleClearInventory}
+              className="gap-2"
+            >
+              {isClearing ? 'Limpiando...' : <><RotateCcw className="w-4 h-4" /> Subir Nuevo</>}
+            </Button>
             <Button 
               variant="primary" 
               disabled={isSaving || items.length === 0} 
@@ -127,7 +160,7 @@ export default function InventoryReviewPage() {
             </div>
           </div>
 
-          {/* Main Table */}
+          {/* Main Table - Read Only */}
           <div className="lg:col-span-3 bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -136,43 +169,19 @@ export default function InventoryReviewPage() {
                     <th className="p-4 text-sm font-semibold text-neutral-600 dark:text-neutral-400">UPC / Código</th>
                     <th className="p-4 text-sm font-semibold text-neutral-600 dark:text-neutral-400">Descripción</th>
                     <th className="p-4 text-sm font-semibold text-neutral-600 dark:text-neutral-400 w-32">Cantidad</th>
-                    <th className="p-4 text-sm font-semibold text-neutral-600 dark:text-neutral-400 w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   {items.map((item, index) => (
-                    <tr key={index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors group">
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.upc}
-                          onChange={e => handleUpdateItem(index, 'upc', e.target.value)}
-                          className="w-full p-2 rounded-lg border border-transparent focus:border-primary-500 bg-transparent outline-none font-mono text-sm"
-                        />
+                    <tr key={index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
+                      <td className="p-4 font-mono text-sm text-neutral-700 dark:text-neutral-300">
+                        {item.upc}
                       </td>
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.description}
-                          onChange={e => handleUpdateItem(index, 'description', e.target.value)}
-                          className="w-full p-2 rounded-lg border border-transparent focus:border-primary-500 bg-transparent outline-none text-sm"
-                        />
+                      <td className="p-4 text-sm text-neutral-700 dark:text-neutral-300">
+                        {item.description}
                       </td>
-                      <td className="p-2">
-                        <input 
-                          type="number" 
-                          value={item.quantity}
-                          onChange={e => handleUpdateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                          className={`w-full p-2 rounded-lg border ${item.quantity === 0 ? 'border-red-200 bg-red-50 dark:bg-red-900/20 text-red-600' : 'border-transparent bg-transparent'} focus:border-primary-500 outline-none text-sm font-bold`}
-                        />
-                      </td>
-                      <td className="p-2 text-right">
-                        <button 
-                          onClick={() => handleRemoveItem(index)}
-                          className="p-2 text-neutral-400 hover:text-red-600 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className={`p-4 text-sm font-bold text-center ${item.quantity === 0 ? 'text-red-600' : 'text-neutral-700 dark:text-neutral-300'}`}>
+                        {item.quantity}
                       </td>
                     </tr>
                   ))}

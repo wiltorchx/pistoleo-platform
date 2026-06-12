@@ -12,7 +12,7 @@ export interface ParsedInventoryItem {
   expectedQuantity: number;
 }
 
-export async function parseInventoryExcel(buffer: Buffer, mapping: ExcelMapping): Promise<ParsedInventoryItem[]> {
+export async function parseInventoryExcel(buffer: ArrayBuffer, mapping: ExcelMapping): Promise<ParsedInventoryItem[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const worksheet = workbook.getWorksheet(1);
@@ -45,7 +45,7 @@ export async function parseInventoryExcel(buffer: Buffer, mapping: ExcelMapping)
     if (rowNumber === 1) return; // Skip header
 
     const upc = row.getCell(upcIdx).value?.toString().trim();
-    const description = descIdx !== undefined ? row.getCell(descIdx).value?.toString().trim() : 'No description';
+    const description = descIdx !== undefined ? (row.getCell(descIdx).value?.toString().trim() ?? 'No description') : 'No description';
     const qtyValue = row.getCell(qtyIdx).value;
     const expectedQuantity = typeof qtyValue === 'number' ? qtyValue : parseFloat(qtyValue?.toString().replace(',', '.') || '0');
 

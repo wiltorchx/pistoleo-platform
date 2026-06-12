@@ -1,7 +1,6 @@
 "use client";
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/atoms/Button';
 import { t } from '@/lib/pistoleo/i18n';
 import * as ExcelJS from 'exceljs';
@@ -10,12 +9,16 @@ interface PistoleoWizardProps {
   onClose: () => void;
   onComplete: (batchId: string) => void;
   userId: string;
+  initialBatchId?: string | null;
 }
 
-export const PistoleoWizard = ({ onClose, onComplete, userId }: PistoleoWizardProps) => {
+export const PistoleoWizard = ({ onClose, onComplete, userId, initialBatchId }: PistoleoWizardProps) => {
   const router = useRouter();
-  const [step, setStep] = React.useState(1);
-  const [formData, setFormData] = React.useState({ name: '', batchId: '' });
+  const initialStep = initialBatchId ? 2 : 1;
+  const initialFormData = initialBatchId ? { name: '', batchId: initialBatchId } : { name: '', batchId: '' };
+  
+  const [step, setStep] = React.useState(initialStep);
+  const [formData, setFormData] = React.useState(initialFormData);
   const [isLoading, setIsLoading] = React.useState(false);
   const [importStatus, setImportStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   
@@ -158,6 +161,13 @@ export const PistoleoWizard = ({ onClose, onComplete, userId }: PistoleoWizardPr
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-4">{t('wizard.step2.title')}</h3>
+                {initialBatchId && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Re-subiendo inventario:</strong> Se reemplazará el inventario existente en este lote.
+                    </p>
+                  </div>
+                )}
                 <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 text-center space-y-4">
                   <input 
                     type="file" 
@@ -179,7 +189,14 @@ export const PistoleoWizard = ({ onClose, onComplete, userId }: PistoleoWizardPr
               </div>
               
               <div className="flex gap-3">
-                <Button variant="ghost" className="flex-1" onClick={() => setStep(1)}>{t('wizard.step2.back')}</Button>
+                <Button 
+                  variant="ghost" 
+                  className="flex-1" 
+                  onClick={() => setStep(initialBatchId ? 1 : 1)}
+                  disabled={Boolean(initialBatchId)}
+                >
+                  {initialBatchId ? 'No disponible' : t('wizard.step2.back')}
+                </Button>
                 <Button 
                   variant="primary" 
                   className="flex-1" 
@@ -206,11 +223,11 @@ export const PistoleoWizard = ({ onClose, onComplete, userId }: PistoleoWizardPr
                   ].map(field => (
                     <div key={field.id} className="space-y-2">
                       <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{field.label}</label>
-                      <select 
-                        className="w-full p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-transparent focus:ring-2 focus:ring-primary-600 outline-none"
-                        value={(mapping as any)[field.id]}
-                        onChange={e => setMapping({ ...mapping, [field.id]: e.target.value })}
-                      >
+                       <select 
+                         className="w-full p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-transparent focus:ring-2 focus:ring-primary-600 outline-none"
+                         value={mapping[field.id as keyof typeof mapping]}
+                         onChange={e => setMapping({ ...mapping, [field.id]: e.target.value })}
+                       >
                         <option value="">Seleccione una columna...</option>
                         {availableColumns.map(col => (
                           <option key={col} value={col}>{col}</option>

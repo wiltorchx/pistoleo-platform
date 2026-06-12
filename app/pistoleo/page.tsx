@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/atoms/Button';
 import { PistoleoWizard } from '@/components/organisms/PistoleoWizard';
 import { t } from '@/lib/pistoleo/i18n';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Batch {
@@ -16,15 +16,23 @@ interface Batch {
 
 export default function PistoleoDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialBatchId, setInitialBatchId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('clear');
+    }
+    return null;
+  });
+  const handledClearRef = useRef<string | null>(null);
 
   useEffect(() => {
     async function fetchBatches() {
       try {
-        // We need an endpoint to list batches. Let's implement it quickly.
         const res = await fetch('/api/pistoleo/batches');
         const data = await res.json();
         setBatches(data);
@@ -36,6 +44,16 @@ export default function PistoleoDashboard() {
     }
     fetchBatches();
   }, []);
+
+  // Handle clear parameter - open wizard at file upload step with existing batchId
+  useEffect(() => {
+    const clearBatchId = searchParams.get('clear');
+    if (clearBatchId && user && handledClearRef.current !== clearBatchId) {
+      handledClearRef.current = clearBatchId;
+      setInitialBatchId(clearBatchId);
+      setIsWizardOpen(true);
+    }
+  }, [searchParams, user]);
 
   return (
     <div className="page-container py-12 px-4 lg:px-0">
@@ -84,8 +102,8 @@ export default function PistoleoDashboard() {
                   Open Session
                 </Button>
                 <Button 
-                  variant="destructive" 
-                  className="rounded-xl px-3"
+                  variant="outline" 
+                  className="rounded-xl px-3 border-red-200 text-red-600 hover:bg-red-50"
                   onClick={async () => {
                     if (confirm('¿Eliminar este lote y todos sus datos?')) {
                       await fetch(`/api/pistoleo/batches?batchId=${batch._id}`, { method: 'DELETE' });
@@ -104,9 +122,14 @@ export default function PistoleoDashboard() {
       {isWizardOpen && user && (
         <PistoleoWizard 
           userId={user.id}
-          onClose={() => setIsWizardOpen(false)} 
+          initialBatchId={initialBatchId}
+          onClose={() => {
+            setIsWizardOpen(false);
+            setInitialBatchId(null);
+          }} 
           onComplete={(batchId) => {
             setIsWizardOpen(false);
+            setInitialBatchId(null);
             router.push(`/pistoleo/${batchId}`);
           }}
         />

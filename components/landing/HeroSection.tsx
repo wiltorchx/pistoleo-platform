@@ -38,23 +38,6 @@ const stats = [
   { icon: <Scan size={24} />, label: 'Escaneos Hoy', value: 156 },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] as const },
-  },
-}
-
 export function HeroSection() {
   return (
     <section className="relative min-h-[80vh] flex items-center bg-surface-dark overflow-hidden">

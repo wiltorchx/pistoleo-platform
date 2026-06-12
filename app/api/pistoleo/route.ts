@@ -64,11 +64,11 @@ export async function POST(req: Request) {
       if (action === 'commit-inventory') {
         const batchId = formData.get('batchId') as string;
         const itemsStr = formData.get('items') as string;
- 
+
         if (!batchId || !itemsStr) {
           return NextResponse.json({ error: 'Missing batchId or items' }, { status: 400 });
         }
- 
+
         try {
           const items = JSON.parse(itemsStr);
           const inventoryDocs = items.map((item: any) => ({
@@ -79,16 +79,39 @@ export async function POST(req: Request) {
             actual_quantity: 0,
             status: item.quantity > 0 ? 'missing' : 'complete',
           }));
- 
-          const { error: insertError } = await db
+
+          // Use upsert to handle both new and existing inventory items
+          const { error: upsertError } = await db
             .from('pistoleo_inventory')
-            .insert(inventoryDocs);
- 
-          if (insertError) throw insertError;
- 
+            .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
+
+          if (upsertError) throw upsertError;
+
           return NextResponse.json({ message: `Committed ${items.length} items` });
         } catch (e: any) {
           return NextResponse.json({ error: e.message || 'Commit failed' }, { status: 500 });
+        }
+      }
+
+      if (action === 'clear-inventory') {
+        const batchId = formData.get('batchId') as string;
+
+        if (!batchId) {
+          return NextResponse.json({ error: 'Missing batchId' }, { status: 400 });
+        }
+
+        try {
+          // Delete inventory items only (keep the batch)
+          const { error: invError } = await db
+            .from('pistoleo_inventory')
+            .delete()
+            .eq('batch_id', batchId);
+
+          if (invError) throw invError;
+
+          return NextResponse.json({ message: 'Inventory cleared successfully' });
+        } catch (e: any) {
+          return NextResponse.json({ error: e.message || 'Clear failed' }, { status: 500 });
         }
       }
  
@@ -103,7 +126,7 @@ export async function POST(req: Request) {
  
         try {
           const mapping = JSON.parse(mappingStr);
-          const buffer = Buffer.from(await file.arrayBuffer());
+          const buffer = await file.arrayBuffer();
           const items = await parseInventoryExcel(buffer, mapping);
  
           const inventoryDocs = items.map(item => ({

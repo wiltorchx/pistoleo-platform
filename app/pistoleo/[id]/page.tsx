@@ -80,7 +80,7 @@ export default function PistoleoScanner() {
             partial: cached.filter(i => i.status === 'partial').length,
             missing: cached.filter(i => i.status === 'missing').length,
             over: cached.filter(i => i.status === 'over').length,
-            items: cached,
+            items: cached.map(i => ({ ...i, _id: i.id })),
           });
         }
       }
