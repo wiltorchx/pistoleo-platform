@@ -37,27 +37,27 @@ export async function POST(req: Request) {
       if (action === 'upload-pdf') {
         const batchId = formData.get('batchId') as string;
         const file = formData.get('file') as File;
- 
+
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
- 
+
         const buffer = Buffer.from(await file.arrayBuffer());
         const items = await parseInventoryPdf(buffer);
- 
+
         const inventoryDocs = items.map(item => ({
           batch_id: batchId,
           upc: item.upc,
           description: item.description,
-          expected_quantity: item.quantity,
+          expected_quantity: Math.round(Number(item.quantity) || 0),
           actual_quantity: 0,
-          status: item.quantity > 0 ? 'missing' : 'complete',
+          status: (Number(item.quantity) || 0) > 0 ? 'missing' : 'complete',
         }));
- 
-        const { error: insertError } = await db
+
+        const { error: upsertError } = await db
           .from('pistoleo_inventory')
-          .insert(inventoryDocs);
- 
-        if (insertError) throw insertError;
- 
+          .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
+
+        if (upsertError) throw upsertError;
+
         return NextResponse.json({ message: `Imported ${items.length} items` });
       }
  
@@ -75,20 +75,24 @@ export async function POST(req: Request) {
             batch_id: batchId,
             upc: item.upc,
             description: item.description,
-            expected_quantity: item.quantity,
+            expected_quantity: Math.round(Number(item.quantity) || 0),
             actual_quantity: 0,
-            status: item.quantity > 0 ? 'missing' : 'complete',
+            status: (Number(item.quantity) || 0) > 0 ? 'missing' : 'complete',
           }));
 
           // Use upsert to handle both new and existing inventory items
-          const { error: upsertError } = await db
+          const { error: upsertError, data } = await db
             .from('pistoleo_inventory')
             .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
 
-          if (upsertError) throw upsertError;
+          if (upsertError) {
+            console.error('Upsert error:', upsertError);
+            throw upsertError;
+          }
 
-          return NextResponse.json({ message: `Committed ${items.length} items` });
+          return NextResponse.json({ message: `Committed ${items.length} items`, data });
         } catch (e: any) {
+          console.error('Commit inventory error:', e);
           return NextResponse.json({ error: e.message || 'Commit failed' }, { status: 500 });
         }
       }
@@ -128,24 +132,25 @@ export async function POST(req: Request) {
           const mapping = JSON.parse(mappingStr);
           const buffer = await file.arrayBuffer();
           const items = await parseInventoryExcel(buffer, mapping);
- 
+
           const inventoryDocs = items.map(item => ({
             batch_id: batchId,
             upc: item.upc,
             description: item.description,
-            expected_quantity: item.expectedQuantity,
+            expected_quantity: Math.round(Number(item.expectedQuantity) || 0),
             actual_quantity: 0,
-            status: item.expectedQuantity > 0 ? 'missing' : 'complete',
+            status: (Number(item.expectedQuantity) || 0) > 0 ? 'missing' : 'complete',
           }));
- 
-          const { error: insertError } = await db
+
+          const { error: upsertError } = await db
             .from('pistoleo_inventory')
-            .insert(inventoryDocs);
- 
-          if (insertError) throw insertError;
- 
+            .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
+
+          if (upsertError) throw upsertError;
+
           return NextResponse.json({ message: `Imported ${items.length} items from Excel` });
         } catch (e: any) {
+          console.error('Excel import error:', e);
           return NextResponse.json({ error: e.message || 'Excel processing failed' }, { status: 500 });
         }
       }
