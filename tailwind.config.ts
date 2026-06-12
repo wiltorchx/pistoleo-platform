@@ -6,7 +6,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-      colors: {
         primary: {
           50: '#fefce8',
           100: '#fef9c3',
@@ -22,6 +21,7 @@ const config: Config = {
           dark: '#000000', // True black
           'dark-elevated': '#121212' // Almost black
         },
+
         success: '#10b981',
         danger: '#ef4444',
         warning: '#f59e0b',
