@@ -1,4 +1,6 @@
+"use client";
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
 import { t } from '@/lib/pistoleo/i18n';
 import * as ExcelJS from 'exceljs';
@@ -9,6 +11,7 @@ interface PistoleoWizardProps {
 }
 
 export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => {
+  const router = useRouter();
   const [step, setStep] = React.useState(1);
   const [formData, setFormData] = React.useState({ name: '', batchId: '' });
   const [isLoading, setIsLoading] = React.useState(false);
@@ -49,16 +52,20 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
     setSelectedFile(file);
 
     if (file.name.endsWith('.pdf')) {
-      // For PDFs, we skip mapping and go straight to import
+      // For PDFs, we now parse and redirect to a review page instead of direct import
       setImportStatus('loading');
       try {
         const body = new FormData();
-        body.append('action', 'upload-pdf');
-        body.append('batchId', formData.batchId);
+        body.append('action', 'parse-pdf');
         body.append('file', file);
-
+ 
         const res = await fetch('/api/pistoleo', { method: 'POST', body });
         if (res.ok) {
+          const data = await res.json();
+          // Store the parsed items in sessionStorage for the review page
+          sessionStorage.setItem('pending_inventory', JSON.stringify(data.items));
+          // Redirect to review page with batchId
+          router.push(`/pistoleo/review?batchId=${formData.batchId}`);
           setImportStatus('success');
         } else {
           setImportStatus('error');
@@ -67,6 +74,7 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
         setImportStatus('error');
       }
     } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.csv')) {
+
       // For Excel/CSV, we need to extract columns for mapping
       try {
         const workbook = new ExcelJS.Workbook();
