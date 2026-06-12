@@ -105,7 +105,7 @@ export function HeroSection() {
         >
           <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl border-4 border-white/20 aspect-[4/3]">
             <Image 
-              src="https://images.unsplash.com/photo-1586528116311-ad8de9c20fb1?auto=format&fit=crop&q=80&w=1200" 
+              src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=1200" 
               alt="Pistoleo Warehouse" 
               fill
               className="object-cover"
