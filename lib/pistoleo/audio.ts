@@ -10,10 +10,12 @@ export const playScanSound = (type: 'success' | 'over' | 'unknown') => {
 };
 
 export const playBeep = (frequency = 440, duration = 0.1) => {
-  const audioCtx = new (window.AudioContext || (window) => {
-    // @ts-ignore
-    return window.webkitAudioContext
-  })();
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioContextClass) {
+    console.warn('AudioContext not supported');
+    return;
+  }
+  const audioCtx = new AudioContextClass();
   const oscillator = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
 
