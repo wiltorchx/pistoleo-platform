@@ -40,10 +40,26 @@ export async function POST(req: Request) {
 
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
+        // Validate batch exists
+        const { data: batch, error: batchError } = await db
+          .from('pistoleo_batches')
+          .select('id')
+          .eq('id', batchId)
+          .single();
+        if (batchError || !batch) {
+          return NextResponse.json({ error: 'Lote no encontrado' }, { status: 404 });
+        }
+
         const buffer = Buffer.from(await file.arrayBuffer());
         const items = await parseInventoryPdf(buffer);
 
-        const inventoryDocs = items.map(item => ({
+        // Deduplicate by UPC
+        const uniqueItems = items.reduce<typeof items>((acc, item) => {
+          if (!acc.find(i => i.upc === item.upc)) acc.push(item);
+          return acc;
+        }, []);
+
+        const inventoryDocs = uniqueItems.map(item => ({
           batch_id: batchId,
           upc: item.upc,
           description: item.description,
@@ -58,7 +74,7 @@ export async function POST(req: Request) {
 
         if (upsertError) throw upsertError;
 
-        return NextResponse.json({ message: `Imported ${items.length} items` });
+        return NextResponse.json({ message: `Imported ${uniqueItems.length} items` });
       }
  
       if (action === 'commit-inventory') {
@@ -69,9 +85,26 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Missing batchId or items' }, { status: 400 });
         }
 
+        // Validate batch exists
+        const { data: batch, error: batchError } = await db
+          .from('pistoleo_batches')
+          .select('id')
+          .eq('id', batchId)
+          .single();
+        if (batchError || !batch) {
+          return NextResponse.json({ error: 'Lote no encontrado' }, { status: 404 });
+        }
+
         try {
-          const items = JSON.parse(itemsStr);
-          const inventoryDocs = items.map((item: any) => ({
+          const items = JSON.parse(itemsStr) as Array<{ upc: string; description: string; quantity: number }>;
+          
+          // Deduplicate by UPC
+          const uniqueItems = items.reduce<typeof items>((acc, item) => {
+            if (!acc.find(i => i.upc === item.upc)) acc.push(item);
+            return acc;
+          }, []);
+
+          const inventoryDocs = uniqueItems.map((item: typeof items[0]) => ({
             batch_id: batchId,
             upc: item.upc,
             description: item.description,
@@ -90,10 +123,15 @@ export async function POST(req: Request) {
             throw upsertError;
           }
 
-          return NextResponse.json({ message: `Committed ${items.length} items`, data });
+          return NextResponse.json({ message: `Committed ${uniqueItems.length} items`, data });
         } catch (e: any) {
           console.error('Commit inventory error:', e);
-          return NextResponse.json({ error: e.message || 'Commit failed' }, { status: 500 });
+          return NextResponse.json({ 
+            error: e.message || 'Commit failed',
+            details: e.details,
+            code: e.code,
+            hint: e.hint
+          }, { status: 500 });
         }
       }
 
@@ -123,17 +161,34 @@ export async function POST(req: Request) {
         const batchId = formData.get('batchId') as string;
         const file = formData.get('file') as File;
         const mappingStr = formData.get('mapping') as string;
- 
+
         if (!file || !mappingStr) {
           return NextResponse.json({ error: 'Missing file or mapping' }, { status: 400 });
         }
- 
+
+        // Validate batch exists
+        const { data: batch, error: batchError } = await db
+          .from('pistoleo_batches')
+          .select('id')
+          .eq('id', batchId)
+          .single();
+        if (batchError || !batch) {
+          return NextResponse.json({ error: 'Lote no encontrado' }, { status: 404 });
+        }
+
         try {
           const mapping = JSON.parse(mappingStr);
           const buffer = await file.arrayBuffer();
           const items = await parseInventoryExcel(buffer, mapping);
 
-          const inventoryDocs = items.map(item => ({
+          // Deduplicate by UPC
+          interface ExcelParsedItem { upc: string; description: string; expectedQuantity: number; }
+          const uniqueItems = items.reduce<ExcelParsedItem[]>((acc, item) => {
+            if (!acc.find(i => i.upc === item.upc)) acc.push(item);
+            return acc;
+          }, []);
+
+          const inventoryDocs = uniqueItems.map(item => ({
             batch_id: batchId,
             upc: item.upc,
             description: item.description,
@@ -148,10 +203,15 @@ export async function POST(req: Request) {
 
           if (upsertError) throw upsertError;
 
-          return NextResponse.json({ message: `Imported ${items.length} items from Excel` });
+          return NextResponse.json({ message: `Imported ${uniqueItems.length} items from Excel` });
         } catch (e: any) {
           console.error('Excel import error:', e);
-          return NextResponse.json({ error: e.message || 'Excel processing failed' }, { status: 500 });
+          return NextResponse.json({ 
+            error: e.message || 'Excel processing failed',
+            details: e.details,
+            code: e.code,
+            hint: e.hint
+          }, { status: 500 });
         }
       }
 

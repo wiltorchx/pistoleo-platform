@@ -51,7 +51,12 @@ export default function InventoryReviewPage() {
       body.append('items', JSON.stringify(items));
 
       const res = await fetch('/api/pistoleo', { method: 'POST', body });
-      if (!res.ok) throw new Error("Error al guardar el inventario");
+      const data = await res.json();
+      if (!res.ok) {
+        const details = data.details ? ` - ${data.details}` : '';
+        const code = data.code ? ` (${data.code})` : '';
+        throw new Error(`${data.error || 'Error al guardar el inventario'}${details}${code}`);
+      }
       
       sessionStorage.removeItem('pending_inventory');
       router.push(`/pistoleo/${batchId}`);
@@ -79,7 +84,12 @@ export default function InventoryReviewPage() {
       body.append('batchId', batchId);
 
       const res = await fetch('/api/pistoleo', { method: 'POST', body });
-      if (!res.ok) throw new Error("Error al limpiar el inventario");
+      const data = await res.json();
+      if (!res.ok) {
+        const details = data.details ? ` - ${data.details}` : '';
+        const code = data.code ? ` (${data.code})` : '';
+        throw new Error(`${data.error || 'Error al limpiar el inventario'}${details}${code}`);
+      }
       
       // Clear session storage and redirect back to wizard
       sessionStorage.removeItem('pending_inventory');
