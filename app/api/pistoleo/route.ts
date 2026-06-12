@@ -23,7 +23,8 @@ export async function POST(req: Request) {
           .single();
 
         if (error) throw error;
-        return NextResponse.json(batch);
+        // Return consistent format with _id for frontend compatibility
+        return NextResponse.json({ ...batch, _id: batch.id });
       }
 
       if (action === 'parse-pdf') {
