@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/atoms/Button';
 import { t } from '@/lib/pistoleo/i18n';
+import * as ExcelJS from 'exceljs';
 
 interface PistoleoWizardProps {
   onClose: () => void;
@@ -12,6 +13,15 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
   const [formData, setFormData] = React.useState({ name: '', batchId: '' });
   const [isLoading, setIsLoading] = React.useState(false);
   const [importStatus, setImportStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  
+  // Excel Mapping State
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [availableColumns, setAvailableColumns] = React.useState<string[]>([]);
+  const [mapping, setMapping] = React.useState({
+    upc: '',
+    description: '',
+    quantity: '',
+  });
 
   const handleStep1Next = async () => {
     if (!formData.name) return;
@@ -33,16 +43,60 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
     }
   };
 
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFile(file);
 
+    if (file.name.endsWith('.pdf')) {
+      // For PDFs, we skip mapping and go straight to import
+      setImportStatus('loading');
+      try {
+        const body = new FormData();
+        body.append('action', 'upload-pdf');
+        body.append('batchId', formData.batchId);
+        body.append('file', file);
+
+        const res = await fetch('/api/pistoleo', { method: 'POST', body });
+        if (res.ok) {
+          setImportStatus('success');
+        } else {
+          setImportStatus('error');
+        }
+      } catch {
+        setImportStatus('error');
+      }
+    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.csv')) {
+      // For Excel/CSV, we need to extract columns for mapping
+      try {
+        const workbook = new ExcelJS.Workbook();
+        const arrayBuffer = await file.arrayBuffer();
+        await workbook.xlsx.load(arrayBuffer);
+        const worksheet = workbook.getWorksheet(1);
+        
+        if (worksheet && worksheet.getRow(1)) {
+          const headers = worksheet.getRow(1).values as string[];
+          // ExcelJS row values are 1-indexed and can contain nulls
+          const cleanHeaders = headers.slice(1).filter(Boolean).map(String);
+          setAvailableColumns(cleanHeaders);
+          setStep(2.5); // Go to mapping step
+        }
+      } catch (err) {
+        console.error('Error reading excel headers', err);
+        setImportStatus('error');
+      }
+    }
+  };
+
+  const handleExcelImport = async () => {
+    if (!selectedFile || !mapping.upc) return;
     setImportStatus('loading');
     try {
       const body = new FormData();
-      body.append('action', 'upload-pdf');
+      body.append('action', 'upload-excel');
       body.append('batchId', formData.batchId);
-      body.append('file', file);
+      body.append('file', selectedFile);
+      body.append('mapping', JSON.stringify(mapping));
 
       const res = await fetch('/api/pistoleo', { method: 'POST', body });
       if (res.ok) {
@@ -54,6 +108,7 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
       setImportStatus('error');
     }
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -96,15 +151,15 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
                 <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 text-center space-y-4">
                   <input 
                     type="file" 
-                    id="pdf-upload" 
+                    id="file-upload" 
                     className="hidden" 
-                    accept=".pdf" 
-                    onChange={handlePdfUpload}
+                    accept=".pdf,.xlsx,.csv" 
+                    onChange={handleFileUpload}
                   />
-                  <label htmlFor="pdf-upload" className="cursor-pointer block">
+                  <label htmlFor="file-upload" className="cursor-pointer block">
                     <div className="text-4xl mb-2">📄</div>
                     <p className="font-medium">{t('wizard.step2.uploadLabel')}</p>
-                    <p className="text-sm text-neutral-500">{t('wizard.step2.uploadHint')}</p>
+                    <p className="text-sm text-neutral-500">Soporta PDF, Excel o CSV</p>
                   </label>
                 </div>
                 
@@ -118,12 +173,59 @@ export const PistoleoWizard = ({ onClose, onComplete }: PistoleoWizardProps) => 
                 <Button 
                   variant="primary" 
                   className="flex-1" 
-                  disabled={importStatus !== 'success'} 
+                  disabled={importStatus !== 'success' && step === 2} 
                   onClick={() => setStep(3)}
                 >
                   {t('wizard.step2.confirm')}
                 </Button>
               </div>
+            </div>
+          )}
+
+          {step === 2.5 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Mapeo de Columnas</h3>
+                <p className="text-sm text-neutral-500 mb-6">Asocia las columnas de tu archivo con los campos del sistema.</p>
+                
+                <div className="space-y-4">
+                  {[
+                    { id: 'upc', label: 'Código / UPC' },
+                    { id: 'description', label: 'Descripción / Producto' },
+                    { id: 'quantity', label: 'Cantidad Esperada' },
+                  ].map(field => (
+                    <div key={field.id} className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{field.label}</label>
+                      <select 
+                        className="w-full p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-transparent focus:ring-2 focus:ring-primary-600 outline-none"
+                        value={(mapping as any)[field.id]}
+                        onChange={e => setMapping({ ...mapping, [field.id]: e.target.value })}
+                      >
+                        <option value="">Seleccione una columna...</option>
+                        {availableColumns.map(col => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button variant="ghost" className="flex-1" onClick={() => setStep(2)}>Volver</Button>
+                <Button 
+                  variant="primary" 
+                  className="flex-1" 
+                  disabled={!mapping.upc || !mapping.quantity} 
+                  onClick={async () => {
+                    await handleExcelImport();
+                    if (importStatus === 'success') setStep(3);
+                  }}
+                >
+                  {importStatus === 'loading' ? 'Procesando...' : 'Importar Datos'}
+                </Button>
+              </div>
+              {importStatus === 'error' && <p className="text-center text-red-600 text-sm font-medium">Error al importar el archivo. Intente de nuevo.</p>}
             </div>
           )}
 
