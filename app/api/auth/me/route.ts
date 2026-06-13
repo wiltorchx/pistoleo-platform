@@ -1,0 +1,46 @@
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/jwt';
+import { db } from '@/lib/db';
+
+export const runtime = 'nodejs';
+
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    const { data: user, error } = await db
+      .from('users')
+      .select('id, first_name, last_name, email, role, avatar_url')
+      .eq('id', payload.userId)
+      .single();
+
+    if (error || !user) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    return NextResponse.json({
+      user: {
+        id: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatar_url,
+      },
+    });
+  } catch (error) {
+    console.error('Error en /api/auth/me:', error);
+    return NextResponse.json({ user: null }, { status: 500 });
+  }
+}
