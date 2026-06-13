@@ -5,6 +5,8 @@ import { HowItWorks } from '@/components/landing/HowItWorks'
 import { CtaSection } from '@/components/landing/CtaSection'
 import { Footer } from '@/shared/components/layout/Footer'
 
+export const dynamic = 'force-dynamic'
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-white selection:bg-primary-100 selection:text-primary-900">
