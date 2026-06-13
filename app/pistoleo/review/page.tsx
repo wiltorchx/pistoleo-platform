@@ -56,7 +56,7 @@ export default function InventoryReviewPage() {
       router.push(`/pistoleo/${batchId}`);
     } catch (e: unknown) {
       const error = e as { message?: string };
-      setError(error.message);
+      setError(error.message ?? 'Error desconocido');
     } finally {
       setIsSaving(false);
     }
@@ -91,13 +91,11 @@ export default function InventoryReviewPage() {
       router.push(`/pistoleo?clear=${batchId}`);
     } catch (e: unknown) {
       const error = e as { message?: string };
-      setError(error.message);
+      setError(error.message ?? 'Error desconocido');
     } finally {
       setIsClearing(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
