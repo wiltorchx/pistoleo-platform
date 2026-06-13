@@ -1,8 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-let _supabase: ReturnType<typeof createClient> | null = null
+let _supabase: SupabaseClient | null = null
 
-function getSupabaseClient() {
+function getSupabaseClient(): SupabaseClient {
   if (_supabase) return _supabase
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -12,17 +12,21 @@ function getSupabaseClient() {
     if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE_BUILD) {
       throw new Error('Missing Supabase environment variables')
     }
-    // Return a mock client for build phase
-    return {} as ReturnType<typeof createClient>
+    // Return a mock client for build phase - use a properly typed mock
+    return createClient('https://placeholder.supabase.co', 'placeholder-key')
   }
 
   _supabase = createClient(supabaseUrl, supabaseAnonKey)
   return _supabase
 }
 
-export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+// Export a getter that returns the properly typed client
+export const getSupabase = (): SupabaseClient => getSupabaseClient()
+
+// For backward compatibility, export a proxy that works at runtime but has correct types at compile time
+export const supabase = new Proxy({} as SupabaseClient, {
   get(_target, prop) {
     const client = getSupabaseClient()
-    return client[prop as keyof typeof client]
+    return client[prop as keyof SupabaseClient]
   }
-})
+}) as SupabaseClient

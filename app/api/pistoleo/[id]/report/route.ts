@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { db } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { InventoryRow } from '@/lib/supabase-types';
 
 export async function GET(
   _req: Request,
@@ -41,6 +42,8 @@ export async function GET(
 
     if (invError) throw invError;
 
+    const typedInventory = inventory as InventoryRow[] | null;
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Inventory Report');
 
@@ -79,7 +82,7 @@ export async function GET(
       cell.style = headerStyle;
     });
 
-    (inventory || []).forEach(item => {
+    (typedInventory || []).forEach(item => {
       const diff = item.actual_quantity - item.expected_quantity;
       const row = worksheet.addRow({
         upc: item.upc,
@@ -99,8 +102,8 @@ export async function GET(
     const summaryRow = worksheet.addRow(['', '', 'TOTALS', '', '']);
     summaryRow.getCell(3).font = { bold: true };
 
-    const totalExpected = (inventory || []).reduce((sum, i) => sum + i.expected_quantity, 0);
-    const totalActual = (inventory || []).reduce((sum, i) => sum + i.actual_quantity, 0);
+    const totalExpected = (typedInventory || []).reduce((sum, i) => sum + i.expected_quantity, 0);
+    const totalActual = (typedInventory || []).reduce((sum, i) => sum + i.actual_quantity, 0);
 
     const totalsRow = worksheet.addRow(['', '', totalExpected, totalActual, totalActual - totalExpected]);
     totalsRow.eachCell((cell) => {

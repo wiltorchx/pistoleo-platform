@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { BatchRow, InventoryRow } from '@/lib/supabase-types';
 
 export async function PATCH(
   req: Request,
@@ -25,12 +26,14 @@ export async function PATCH(
       .eq('id', id)
       .single();
 
-    if (error || !batch) {
+    const typedBatch = batch as BatchRow | null;
+
+    if (error || !typedBatch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
     // Check access
-    const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+    const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -75,11 +78,13 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (!batch) {
+    const typedBatch = batch as BatchRow | null;
+
+    if (!typedBatch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
-    const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+    const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
     if (!hasAccess) {
       // Check if user has scanned this batch
       const { data: existingScan } = await db
@@ -102,7 +107,9 @@ export async function GET(
 
     if (error) throw error;
 
-    const mapped = (items || []).map(i => ({
+    const typedItems = items as InventoryRow[] | null;
+
+    const mapped = (typedItems || []).map(i => ({
       _id: i.id,
       id: i.id,
       batchId: i.batch_id,

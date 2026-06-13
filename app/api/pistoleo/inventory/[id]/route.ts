@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { InventoryWithBatch } from '@/lib/supabase-types';
 
 export async function PATCH(
   req: Request,
@@ -25,13 +26,14 @@ export async function PATCH(
       .eq('id', itemId)
       .single();
 
-    if (!inventory) {
+    const typedInventory = inventory as InventoryWithBatch | null;
+
+    if (!typedInventory) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
     // Check access
-    const batch = inventory.pistoleo_batches as { created_by: string };
-    const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+    const hasAccess = authUser.role === 'admin' || typedInventory.pistoleo_batches.created_by === authUser.id;
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -39,9 +41,9 @@ export async function PATCH(
     let status: string;
     if (actualQuantity === 0) {
       status = 'missing';
-    } else if (actualQuantity < inventory.expected_quantity) {
+    } else if (actualQuantity < typedInventory.expected_quantity) {
       status = 'partial';
-    } else if (actualQuantity === inventory.expected_quantity) {
+    } else if (actualQuantity === typedInventory.expected_quantity) {
       status = 'complete';
     } else {
       status = 'over';

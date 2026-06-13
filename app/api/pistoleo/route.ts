@@ -4,6 +4,7 @@ import { parseInventoryPdf } from '@/lib/pistoleo/pdfParser';
 import { parseInventoryExcel } from '@/lib/pistoleo/excelParser';
 import { processScan } from '@/lib/pistoleo/comparisonEngine';
 import { getAuthenticatedUser } from '@/lib/api-auth';
+import { BatchRow, InventoryRow } from '@/lib/supabase-types';
 
 export async function POST(req: Request) {
   const contentType = req.headers.get('content-type') || '';
@@ -245,12 +246,14 @@ export async function POST(req: Request) {
           .eq('id', batchId)
           .single();
 
-        if (batchError || !batch) {
+        const typedBatch = batch as BatchRow | null;
+
+        if (batchError || !typedBatch) {
           return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
         }
 
         // Check if user has access to this batch
-        const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+        const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
         if (!hasAccess) {
           // Check if user has scanned this batch before
           const { data: existingScan } = await db
@@ -291,11 +294,13 @@ export async function POST(req: Request) {
           .eq('id', batchId)
           .single();
 
-        if (batchError || !batch) {
+        const typedBatch = batch as BatchRow | null;
+
+        if (batchError || !typedBatch) {
           return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
         }
 
-        const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+        const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
         if (!hasAccess) {
           return NextResponse.json({ error: 'Forbidden: No access to this batch' }, { status: 403 });
         }
@@ -308,22 +313,24 @@ export async function POST(req: Request) {
           .eq('upc', upc)
           .single();
 
-        if (invError || !inventory) {
+        const typedInventory = inventory as InventoryRow | null;
+
+        if (invError || !typedInventory) {
           return NextResponse.json({ error: 'Item not found in batch' }, { status: 404 });
         }
 
-        if (inventory.actual_quantity <= 0) {
+        if (typedInventory.actual_quantity <= 0) {
           return NextResponse.json({ error: 'Quantity already at zero' }, { status: 400 });
         }
 
-        const newActual = inventory.actual_quantity - 1;
+        const newActual = typedInventory.actual_quantity - 1;
 
         let status: string;
         if (newActual === 0) {
           status = 'missing';
-        } else if (newActual < inventory.expected_quantity) {
+        } else if (newActual < typedInventory.expected_quantity) {
           status = 'partial';
-        } else if (newActual === inventory.expected_quantity) {
+        } else if (newActual === typedInventory.expected_quantity) {
           status = 'complete';
         } else {
           status = 'over';
@@ -332,7 +339,7 @@ export async function POST(req: Request) {
         const { data: updated, error: updateError } = await db
           .from('pistoleo_inventory')
           .update({ actual_quantity: newActual, status })
-          .eq('id', inventory.id)
+          .eq('id', typedInventory.id)
           .select()
           .single();
 
