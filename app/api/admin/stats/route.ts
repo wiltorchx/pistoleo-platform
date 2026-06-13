@@ -32,7 +32,8 @@ export async function GET() {
       db.from('pistoleo_batches').select('*').order('created_at', { ascending: false }).limit(10),
     ]);
 
-    const mappedBatches = (recentBatches || []).map(b => ({
+    type BatchRow = { id: string; name: string; status: string; created_at: string };
+    const mappedBatches = ((recentBatches as BatchRow[]) || []).map(b => ({
       _id: b.id,
       name: b.name,
       status: b.status,
