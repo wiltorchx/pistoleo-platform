@@ -1,13 +1,17 @@
 import { SignJWT, jwtVerify } from 'jose';
 
 const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-minimum-32-characters-long!'
+  process.env.JWT_SECRET
 );
+
+if (!secret || secret.length === 0) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 export interface JWTPayload {
   userId: string;
   email: string;
-  role: 'student' | 'tutor' | 'admin';
+  role: 'admin' | 'operator';
   [key: string]: unknown;
 }
 

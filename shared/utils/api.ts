@@ -15,8 +15,9 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-export const extractData = <T>(response: any): T => {
-  return response.data?.data ?? response.data
+export const extractData = <T>(response: unknown): T => {
+  const res = response as { data?: { data?: T } | T };
+  return res.data?.data ?? res.data as T;
 }
 
 export default api

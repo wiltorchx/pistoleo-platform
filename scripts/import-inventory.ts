@@ -43,7 +43,7 @@ async function importInventory() {
     // 2. Create a new Batch
     console.log('📦 Creating new batch...');
     // We need an admin user ID. Fetch or create one.
-    let { data: adminUser, error: adminError } = await supabase
+    const { data: adminUser, error: adminError } = await supabase
       .from('users')
       .select('id')
       .eq('role', 'admin')
@@ -90,7 +90,7 @@ async function importInventory() {
     await merchWorkbook.csv.readFile(MERCHANDISE_PATH);
     const merchSheet = merchWorkbook.worksheets[0];
 
-    const inventoryItems: any[] = [];
+    const inventoryItems: unknown[] = [];
     let processedCount = 0;
 
     merchSheet.eachRow((row, rowNumber) => {
@@ -136,7 +136,7 @@ async function importInventory() {
       await insertBatch(inventoryItems);
     }
 
-    async function insertBatch(items: any[]) {
+    async function insertBatch(items: unknown[]) {
       const { error } = await supabase.from('pistoleo_inventory').insert(items);
       if (error) {
         console.error('Error inserting batch:', error);

@@ -21,7 +21,7 @@ export async function parseInventoryExcel(buffer: ArrayBuffer, mapping: ExcelMap
     throw new Error('No worksheet found in the Excel file');
   }
 
-  const headers = worksheet.getRow(1).values as any[];
+  const headers = worksheet.getRow(1).values as unknown[];
   // ExcelJS values are 1-indexed.-
   const headerMap: Record<string, number> = {};
   

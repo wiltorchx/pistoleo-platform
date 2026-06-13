@@ -1,7 +1,8 @@
 export async function requestWakeLock() {
-  if ('wakeLock' in navigator && (navigator as any).wakeLock) {
+  const nav = navigator as Navigator & { wakeLock?: { request: (type: string) => Promise<WakeLockSentinel> } };
+  if ('wakeLock' in navigator && nav.wakeLock) {
     try {
-      const lock = await (navigator as any).wakeLock.request('screen');
+      const lock = await nav.wakeLock.request('screen');
       console.log('Wake Lock acquired');
       return lock;
     } catch (err) {

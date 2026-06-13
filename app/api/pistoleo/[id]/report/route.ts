@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { db } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
 
     const { data: batch, error: batchError } = await db
@@ -17,6 +23,12 @@ export async function GET(
 
     if (batchError || !batch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+    }
+
+    // Check access
+    const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { data: inventory, error: invError } = await db

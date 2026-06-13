@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
 import { AlertCircle, Save, PackageSearch, RotateCcw } from 'lucide-react';
+import { useInventoryWizard } from '@/components/providers/InventoryWizardProvider';
 
 interface InventoryItem {
   upc: string;
@@ -14,25 +15,21 @@ export default function InventoryReviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const batchId = searchParams.get('batchId');
+  const { pendingItems, clearPendingItems } = useInventoryWizard();
   
-  const getInitialItems = (): InventoryItem[] => {
-    const storedItems = sessionStorage.getItem('pending_inventory');
-    if (storedItems) {
-      try {
-        return JSON.parse(storedItems);
-      } catch {
-        return [];
-      }
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pendingItems.length > 0) {
+      setItems(pendingItems);
+      setError(null);
+    } else {
+      setError("No hay datos pendientes de revisión. Por favor, suba un archivo en el Wizard.");
     }
-    return [];
-  };
-
-  const getInitialError = (): string | null => {
-    const storedItems = sessionStorage.getItem('pending_inventory');
-    return storedItems ? null : "No hay datos pendientes de revisión. Por favor, suba un archivo en el Wizard.";
-  };
-
-  const [items] = useState<InventoryItem[]>(getInitialItems);
+  }, [pendingItems]);
   const [isSaving, setIsSaving] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState<string | null>(getInitialError);
@@ -58,10 +55,11 @@ export default function InventoryReviewPage() {
         throw new Error(`${data.error || 'Error al guardar el inventario'}${details}${code}`);
       }
       
-      sessionStorage.removeItem('pending_inventory');
+      clearPendingItems();
       router.push(`/pistoleo/${batchId}`);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setError(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -91,11 +89,12 @@ export default function InventoryReviewPage() {
         throw new Error(`${data.error || 'Error al limpiar el inventario'}${details}${code}`);
       }
       
-      // Clear session storage and redirect back to wizard
-      sessionStorage.removeItem('pending_inventory');
+      // Clear context and redirect back to wizard
+      clearPendingItems();
       router.push(`/pistoleo?clear=${batchId}`);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setError(error.message);
     } finally {
       setIsClearing(false);
     }

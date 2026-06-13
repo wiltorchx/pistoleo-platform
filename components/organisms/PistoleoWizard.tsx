@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
 import { t } from '@/lib/pistoleo/i18n';
 import * as ExcelJS from 'exceljs';
+import { useInventoryWizard } from '@/components/providers/InventoryWizardProvider';
 
 interface PistoleoWizardProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ interface PistoleoWizardProps {
 
 export const PistoleoWizard = ({ onClose, onComplete, userId, initialBatchId }: PistoleoWizardProps) => {
   const router = useRouter();
+  const { setPendingItems, setCurrentBatchId } = useInventoryWizard();
   const initialStep = initialBatchId ? 2 : 1;
   const initialFormData = initialBatchId ? { name: '', batchId: initialBatchId } : { name: '', batchId: '' };
   
@@ -63,12 +65,13 @@ export const PistoleoWizard = ({ onClose, onComplete, userId, initialBatchId }: 
         const body = new FormData();
         body.append('action', 'parse-pdf');
         body.append('file', file);
- 
+  
         const res = await fetch('/api/pistoleo', { method: 'POST', body });
         if (res.ok) {
           const data = await res.json();
-          // Store the parsed items in sessionStorage for the review page
-          sessionStorage.setItem('pending_inventory', JSON.stringify(data.items));
+          // Store the parsed items in context for the review page
+          setPendingItems(data.items);
+          setCurrentBatchId(formData.batchId);
           // Redirect to review page with batchId
           router.push(`/pistoleo/review?batchId=${formData.batchId}`);
           setImportStatus('success');

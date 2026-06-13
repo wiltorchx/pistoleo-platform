@@ -10,7 +10,7 @@ export const playScanSound = (type: 'success' | 'over' | 'unknown') => {
 };
 
 export const playBeep = (frequency = 440, duration = 0.1) => {
-  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextClass) {
     console.warn('AudioContext not supported');
     return;
