@@ -21,12 +21,15 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (batchError || !batch) {
+    type BatchRow = { id: string; name: string; status: string; created_by: string; created_at: string };
+    const typedBatch = batch as BatchRow | null;
+
+    if (batchError || !typedBatch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
     // Check access
-    const hasAccess = authUser.role === 'admin' || batch.created_by === authUser.id;
+    const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -49,7 +52,7 @@ export async function GET(
 
     worksheet.mergeCells('A1:E1');
     const titleCell = worksheet.getCell('A1');
-    titleCell.value = `Inventory Report: ${batch.name}`;
+    titleCell.value = `Inventory Report: ${typedBatch.name}`;
     titleCell.font = { size: 16, bold: true };
     titleCell.alignment = { horizontal: 'center' };
 
@@ -58,7 +61,7 @@ export async function GET(
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:E3');
-    worksheet.getCell('A3').value = `Status: ${batch.status.toUpperCase()}`;
+    worksheet.getCell('A3').value = `Status: ${typedBatch.status.toUpperCase()}`;
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
