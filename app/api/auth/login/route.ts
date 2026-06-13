@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { loginSchema } from '@/lib/validations';
 import { signToken } from '@/lib/jwt';
 import { rateLimit } from '@/lib/rateLimit';
@@ -10,10 +11,11 @@ import { rateLimit } from '@/lib/rateLimit';
 export const runtime = 'nodejs';
 
 async function seedAdminIfNeeded() {
-  const { count } = await db.from('users').select('*', { count: 'exact', head: true });
+  const admin = supabaseAdmin;
+  const { count } = await admin.from('users').select('*', { count: 'exact', head: true });
   if (count === 0) {
     const passwordHash = await bcrypt.hash('Test1234', 12);
-    await db.from('users').insert({
+    await admin.from('users').insert({
       first_name: 'Admin',
       last_name: 'Sistema',
       email: 'admin@lms.com',

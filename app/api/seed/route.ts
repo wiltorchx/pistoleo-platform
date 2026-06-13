@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import * as bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { count } = await db.from('users').select('*', { count: 'exact', head: true });
+    const admin = supabaseAdmin;
+    const { count } = await admin.from('users').select('*', { count: 'exact', head: true });
     if (count && count > 0) {
       return NextResponse.json({ message: 'Ya existen usuarios en el sistema. No se requiere seed.' });
     }
     const passwordHash = await bcrypt.hash('Test1234', 12);
-    const { error } = await db.from('users').insert({
+    const { error } = await admin.from('users').insert({
       first_name: 'Admin',
       last_name: 'Sistema',
       email: 'admin@lms.com',
