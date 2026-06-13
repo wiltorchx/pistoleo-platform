@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { db } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { InventoryRow } from '@/lib/supabase-types';
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
 
     const { data: batch, error: batchError } = await db
@@ -15,8 +22,17 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (batchError || !batch) {
+    type BatchRow = { id: string; name: string; status: string; created_by: string; created_at: string };
+    const typedBatch = batch as BatchRow | null;
+
+    if (batchError || !typedBatch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+    }
+
+    // Check access
+    const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { data: inventory, error: invError } = await db
@@ -25,6 +41,8 @@ export async function GET(
       .eq('batch_id', id);
 
     if (invError) throw invError;
+
+    const typedInventory = inventory as InventoryRow[] | null;
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Inventory Report');
@@ -37,7 +55,7 @@ export async function GET(
 
     worksheet.mergeCells('A1:E1');
     const titleCell = worksheet.getCell('A1');
-    titleCell.value = `Inventory Report: ${batch.name}`;
+    titleCell.value = `Inventory Report: ${typedBatch.name}`;
     titleCell.font = { size: 16, bold: true };
     titleCell.alignment = { horizontal: 'center' };
 
@@ -46,7 +64,7 @@ export async function GET(
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:E3');
-    worksheet.getCell('A3').value = `Status: ${batch.status.toUpperCase()}`;
+    worksheet.getCell('A3').value = `Status: ${typedBatch.status.toUpperCase()}`;
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
@@ -64,7 +82,7 @@ export async function GET(
       cell.style = headerStyle;
     });
 
-    (inventory || []).forEach(item => {
+    (typedInventory || []).forEach(item => {
       const diff = item.actual_quantity - item.expected_quantity;
       const row = worksheet.addRow({
         upc: item.upc,
@@ -84,8 +102,8 @@ export async function GET(
     const summaryRow = worksheet.addRow(['', '', 'TOTALS', '', '']);
     summaryRow.getCell(3).font = { bold: true };
 
-    const totalExpected = (inventory || []).reduce((sum, i) => sum + i.expected_quantity, 0);
-    const totalActual = (inventory || []).reduce((sum, i) => sum + i.actual_quantity, 0);
+    const totalExpected = (typedInventory || []).reduce((sum, i) => sum + i.expected_quantity, 0);
+    const totalActual = (typedInventory || []).reduce((sum, i) => sum + i.actual_quantity, 0);
 
     const totalsRow = worksheet.addRow(['', '', totalExpected, totalActual, totalActual - totalExpected]);
     totalsRow.eachCell((cell) => {

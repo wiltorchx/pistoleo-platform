@@ -8,6 +8,7 @@ import { playScanSound } from '@/lib/pistoleo/audio';
 import { addScanToQueue, getCachedInventory, updateInventoryCache, removeLastScan } from '@/lib/pistoleo/db';
 import { syncPendingScans } from '@/lib/pistoleo/sync';
 import { requestWakeLock, triggerHapticFeedback } from '@/lib/pistoleo/hardware';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BarcodeDetectorQueryResult {
   rawValue: string;
@@ -47,6 +48,7 @@ interface ComparisonSummary {
 export default function PistoleoScanner() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [summary, setSummary] = useState<ComparisonSummary | null>(null);
   const [lastScanned, setLastScanned] = useState<InventoryItem | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -57,6 +59,8 @@ export default function PistoleoScanner() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMissing, setFilterMissing] = useState(false);
   const [industrialMode, setIndustrialMode] = useState(false);
+  const [barcodeDetectorSupported, setBarcodeDetectorSupported] = useState(true);
+  const [manualInput, setManualInput] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const lastScanTime = useRef<number>(0);
@@ -109,7 +113,7 @@ export default function PistoleoScanner() {
         status: 'pending',
       });
 
-      syncPendingScans(id as string, (status) => setSyncStatus(status));
+      syncPendingScans(id as string, user?.id || 'unknown', (status) => setSyncStatus(status));
 
       const res = await fetch('/api/pistoleo', {
         method: 'POST',
@@ -118,7 +122,7 @@ export default function PistoleoScanner() {
           action: 'scan',
           batchId: id,
           upc: upc,
-          userId: 'admin-id',
+          userId: user?.id || 'unknown',
         }),
       });
 
@@ -150,29 +154,40 @@ export default function PistoleoScanner() {
     } finally {
       setTimeout(() => setScanFeedback(null), 1000);
     }
-  }, [id, fetchSummary]);
+  }, [id, fetchSummary, user]);
 
   const handleUndo = useCallback(async () => {
     if (!confirm('¿Deseas deshacer el último escaneo?')) return;
+    if (!lastScanned) {
+      alert('No hay escaneo para deshacer');
+      return;
+    }
     
     try {
-      const removed = await removeLastScan(id as string);
-      if (removed) {
-        // In a real app, we would call a server API to decrement quantity
-        // For now, we refresh the summary to reflect whatever state the server has
-        // or if we implement a server-side undo.
+      const res = await fetch('/api/pistoleo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'undo-scan',
+          batchId: id,
+          upc: lastScanned.upc,
+        }),
+      });
+
+      if (res.ok) {
         await fetchSummary();
         setLastScanned(null);
         setScanFeedback('warning');
         triggerHapticFeedback('warning');
       } else {
-        alert('No hay escaneos para deshacer');
+        const error = await res.json();
+        alert(error.error || 'Error al deshacer el escaneo');
       }
     } catch (e) {
       console.error('Undo error:', e);
       alert('Error al deshacer el escaneo');
     }
-  }, [id, fetchSummary]);
+  }, [id, fetchSummary, lastScanned]);
 
   useEffect(() => {
     async function setupHardware() {
@@ -218,10 +233,11 @@ export default function PistoleoScanner() {
           if (videoEl) {
             videoEl.srcObject = stream;
           }
-          
+           
             if ('BarcodeDetector' in window) {
+              setBarcodeDetectorSupported(true);
               const detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'qr_code'] });
-            
+             
             const scanLoop = async () => {
               if (!videoEl || !isCameraActive) return;
               try {
@@ -237,13 +253,14 @@ export default function PistoleoScanner() {
             scanLoop();
           } else {
             console.warn('BarcodeDetector API not supported in this browser.');
+            setBarcodeDetectorSupported(false);
           }
         } catch (_e) {
           console.error('Camera access denied:', _e);
         }
       }
       startCamera();
-    
+     
       return () => {
         if (videoEl && videoEl.srcObject) {
           (videoEl.srcObject as MediaStream).getTracks().forEach(track => track.stop());
@@ -351,12 +368,58 @@ export default function PistoleoScanner() {
         </div>
         
         {isCameraActive && (
-          <div className="mb-8 bg-black rounded-3xl overflow-hidden relative aspect-video max-w-2xl mx-auto shadow-2xl">
-            <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline></video>
-            <div className="absolute inset-0 border-2 border-primary-600/50 m-20 rounded-lg pointer-events-none" />
-            <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-full text-xs">
-              Cámara Activa
-            </div>
+          <div className="mb-8">
+            {barcodeDetectorSupported ? (
+              <div className="bg-black rounded-3xl overflow-hidden relative aspect-video max-w-2xl mx-auto shadow-2xl">
+                <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline></video>
+                <div className="absolute inset-0 border-2 border-primary-600/50 m-20 rounded-lg pointer-events-none" />
+                <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-full text-xs">
+                  Cámara Activa
+                </div>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-3xl p-6 max-w-2xl mx-auto">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-200">
+                      BarcodeDetector no soportado
+                    </p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                      Tu navegador no soporta la API de detección de códigos de barras. Usa la entrada manual abajo o un escáner USB.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && manualInput.trim()) {
+                        handleScan(manualInput.trim());
+                        setManualInput('');
+                      }
+                    }}
+                    placeholder="Ingresa UPC manualmente y presiona Enter"
+                    className="flex-1 p-3 rounded-xl border border-yellow-300 dark:border-yellow-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-yellow-500 outline-none text-lg font-mono"
+                    autoFocus
+                  />
+                  <Button 
+                    variant="primary"
+                    onClick={() => {
+                      if (manualInput.trim()) {
+                        handleScan(manualInput.trim());
+                        setManualInput('');
+                      }
+                    }}
+                    disabled={!manualInput.trim()}
+                  >
+                    Escanear
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
         

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { BatchRow } from '@/lib/supabase-types';
 
 export async function GET() {
   try {
@@ -10,7 +11,9 @@ export async function GET() {
 
     if (error) throw error;
 
-    const mapped = (batches || []).map(b => ({
+    const typedBatches = batches as BatchRow[] | null;
+
+    const mapped = (typedBatches || []).map(b => ({
       _id: b.id,
       id: b.id,
       name: b.name,

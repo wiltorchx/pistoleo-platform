@@ -1,6 +1,6 @@
 import { getPendingScans, markScanAsSynced, markScanAsError, updateInventoryCache } from './db';
 
-export async function syncPendingScans(batchId: string, onProgress: (status: string) => void) {
+export async function syncPendingScans(batchId: string, userId: string, onProgress: (status: string) => void) {
   const pending = await getPendingScans();
   
   if (pending.length === 0) {
@@ -19,7 +19,7 @@ export async function syncPendingScans(batchId: string, onProgress: (status: str
           action: 'scan',
           batchId: scan.batchId,
           upc: scan.upc,
-          userId: 'admin-id', // Placeholder
+          userId,
         }),
       });
 

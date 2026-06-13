@@ -6,19 +6,17 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('auth_token')?.value;
 
-  const protectedRoutes = ['/dashboard', '/courses', '/bookings'];
+  const protectedRoutes = ['/dashboard', '/pistoleo'];
   const adminRoutes = ['/admin'];
-  const tutorRoutes = ['/tutor'];
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
-  const isTutorRoute = tutorRoutes.some((route) => pathname.startsWith(route));
 
-  if ((isProtectedRoute || isAdminRoute || isTutorRoute) && !token) {
+  if ((isProtectedRoute || isAdminRoute) && !token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (token && (isAdminRoute || isTutorRoute)) {
+  if (token && isAdminRoute) {
     try {
       const payload = await verifyToken(token);
       if (!payload) {
@@ -26,10 +24,6 @@ export async function proxy(request: NextRequest) {
       }
 
       if (isAdminRoute && payload.role !== 'admin') {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-
-      if (isTutorRoute && payload.role !== 'tutor' && payload.role !== 'admin') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
     } catch {

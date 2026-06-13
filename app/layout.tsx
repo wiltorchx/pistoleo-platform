@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { InventoryWizardProvider } from '@/components/providers/InventoryWizardProvider';
 import { Header } from '@/components/organisms/Header';
 import './globals.css';
 
@@ -27,8 +28,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <Header />
-            <main>{children}</main>
+            <InventoryWizardProvider>
+              <Header />
+              <main>{children}</main>
+            </InventoryWizardProvider>
           </AuthProvider>
         </ThemeProvider>
         <script

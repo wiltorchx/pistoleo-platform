@@ -3,11 +3,22 @@ import { db } from '@/lib/db';
 import { parseInventoryPdf } from '@/lib/pistoleo/pdfParser';
 import { parseInventoryExcel } from '@/lib/pistoleo/excelParser';
 import { processScan } from '@/lib/pistoleo/comparisonEngine';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { BatchRow, InventoryRow } from '@/lib/supabase-types';
 
 export async function POST(req: Request) {
   const contentType = req.headers.get('content-type') || '';
 
   try {
+    // Authenticate user for JSON requests (scan action)
+    let authUser: { id: string; email: string; role: 'admin' | 'operator' } | null = null;
+    if (!contentType.includes('multipart/form-data')) {
+      authUser = await getAuthenticatedUser();
+      if (!authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       const action = formData.get('action');
@@ -125,13 +136,14 @@ export async function POST(req: Request) {
           }
 
           return NextResponse.json({ message: `Committed ${uniqueItems.length} items`, data });
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Commit inventory error:', e);
+          const error = e as { message?: string; details?: string; code?: string; hint?: string };
           return NextResponse.json({ 
-            error: e.message || 'Commit failed',
-            details: e.details,
-            code: e.code,
-            hint: e.hint
+            error: error.message || 'Commit failed',
+            details: error.details,
+            code: error.code,
+            hint: error.hint
           }, { status: 500 });
         }
       }
@@ -153,8 +165,9 @@ export async function POST(req: Request) {
           if (invError) throw invError;
 
           return NextResponse.json({ message: 'Inventory cleared successfully' });
-        } catch (e: any) {
-          return NextResponse.json({ error: e.message || 'Clear failed' }, { status: 500 });
+        } catch (e: unknown) {
+          const error = e as { message?: string };
+          return NextResponse.json({ error: error.message || 'Clear failed' }, { status: 500 });
         }
       }
  
@@ -205,13 +218,14 @@ export async function POST(req: Request) {
           if (upsertError) throw upsertError;
 
           return NextResponse.json({ message: `Imported ${uniqueItems.length} items from Excel` });
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Excel import error:', e);
+          const error = e as { message?: string; details?: string; code?: string; hint?: string };
           return NextResponse.json({ 
-            error: e.message || 'Excel processing failed',
-            details: e.details,
-            code: e.code,
-            hint: e.hint
+            error: error.message || 'Excel processing failed',
+            details: error.details,
+            code: error.code,
+            hint: error.hint
           }, { status: 500 });
         }
       }
@@ -219,16 +233,144 @@ export async function POST(req: Request) {
     } else {
       const body = await req.json();
       if (body.action === 'scan') {
-        const { batchId, upc, userId } = body;
+        const { batchId, upc } = body;
+        
+        if (!authUser) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Validate batch access
+        const { data: batch, error: batchError } = await db
+          .from('pistoleo_batches')
+          .select('id, created_by')
+          .eq('id', batchId)
+          .single();
+
+        const typedBatch = batch as BatchRow | null;
+
+        if (batchError || !typedBatch) {
+          return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+        }
+
+        // Check if user has access to this batch
+        const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
+        if (!hasAccess) {
+          // Check if user has scanned this batch before
+          const { data: existingScan } = await db
+            .from('pistoleo_scans')
+            .select('id')
+            .eq('batch_id', batchId)
+            .eq('user_id', authUser.id)
+            .limit(1)
+            .single();
+          
+          if (!existingScan) {
+            return NextResponse.json({ error: 'Forbidden: No access to this batch' }, { status: 403 });
+          }
+        }
+
         const updatedInventory = await processScan(batchId, upc);
 
         await db.from('pistoleo_scans').insert({
           batch_id: batchId,
           upc,
-          user_id: userId,
+          user_id: authUser.id,
         });
 
         return NextResponse.json(updatedInventory);
+      }
+
+      if (body.action === 'undo-scan') {
+        const { batchId, upc } = body;
+        
+        if (!authUser) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Validate batch access
+        const { data: batch, error: batchError } = await db
+          .from('pistoleo_batches')
+          .select('id, created_by')
+          .eq('id', batchId)
+          .single();
+
+        const typedBatch = batch as BatchRow | null;
+
+        if (batchError || !typedBatch) {
+          return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+        }
+
+        const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
+        if (!hasAccess) {
+          return NextResponse.json({ error: 'Forbidden: No access to this batch' }, { status: 403 });
+        }
+
+        // Find the inventory item
+        const { data: inventory, error: invError } = await db
+          .from('pistoleo_inventory')
+          .select('*')
+          .eq('batch_id', batchId)
+          .eq('upc', upc)
+          .single();
+
+        const typedInventory = inventory as InventoryRow | null;
+
+        if (invError || !typedInventory) {
+          return NextResponse.json({ error: 'Item not found in batch' }, { status: 404 });
+        }
+
+        if (typedInventory.actual_quantity <= 0) {
+          return NextResponse.json({ error: 'Quantity already at zero' }, { status: 400 });
+        }
+
+        const newActual = typedInventory.actual_quantity - 1;
+
+        let status: string;
+        if (newActual === 0) {
+          status = 'missing';
+        } else if (newActual < typedInventory.expected_quantity) {
+          status = 'partial';
+        } else if (newActual === typedInventory.expected_quantity) {
+          status = 'complete';
+        } else {
+          status = 'over';
+        }
+
+        const { data: updated, error: updateError } = await db
+          .from('pistoleo_inventory')
+          .update({ actual_quantity: newActual, status })
+          .eq('id', typedInventory.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+
+        // Also delete the latest scan record for this user/batch/upc
+        const { data: latestScan } = await db
+          .from('pistoleo_scans')
+          .select('id')
+          .eq('batch_id', batchId)
+          .eq('upc', upc)
+          .eq('user_id', authUser.id)
+          .order('scanned_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (latestScan) {
+          await db.from('pistoleo_scans').delete().eq('id', latestScan.id);
+        }
+
+        return NextResponse.json({
+          _id: updated.id,
+          id: updated.id,
+          batchId: updated.batch_id,
+          upc: updated.upc,
+          description: updated.description,
+          expectedQuantity: updated.expected_quantity,
+          actualQuantity: updated.actual_quantity,
+          status: updated.status,
+          updatedAt: updated.updated_at,
+        });
       }
     }
 

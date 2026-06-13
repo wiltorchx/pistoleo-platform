@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/api-auth';
+import { InventoryWithBatch } from '@/lib/supabase-types';
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: itemId } = await params;
     const { actualQuantity } = await req.json();
 
@@ -15,20 +22,28 @@ export async function PATCH(
 
     const { data: inventory } = await db
       .from('pistoleo_inventory')
-      .select('*')
+      .select('*, pistoleo_batches!inner(created_by)')
       .eq('id', itemId)
       .single();
 
-    if (!inventory) {
+    const typedInventory = inventory as InventoryWithBatch | null;
+
+    if (!typedInventory) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    // Check access
+    const hasAccess = authUser.role === 'admin' || typedInventory.pistoleo_batches.created_by === authUser.id;
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     let status: string;
     if (actualQuantity === 0) {
       status = 'missing';
-    } else if (actualQuantity < inventory.expected_quantity) {
+    } else if (actualQuantity < typedInventory.expected_quantity) {
       status = 'partial';
-    } else if (actualQuantity === inventory.expected_quantity) {
+    } else if (actualQuantity === typedInventory.expected_quantity) {
       status = 'complete';
     } else {
       status = 'over';

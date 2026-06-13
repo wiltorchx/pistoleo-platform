@@ -25,18 +25,21 @@ export async function GET() {
       .eq('id', payload.userId)
       .single();
 
-    if (error || !user) {
+    type UserRow = { id: string; first_name: string; last_name: string; email: string; role: 'admin' | 'operator'; avatar_url: string | null };
+    const typedUser = user as UserRow | null;
+
+    if (error || !typedUser) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
     return NextResponse.json({
       user: {
-        id: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatar_url,
+        id: typedUser.id,
+        firstName: typedUser.first_name,
+        lastName: typedUser.last_name,
+        email: typedUser.email,
+        role: typedUser.role,
+        avatarUrl: typedUser.avatar_url,
       },
     });
   } catch (error) {
