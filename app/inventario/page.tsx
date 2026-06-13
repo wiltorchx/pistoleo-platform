@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/atoms/Button';
 import {
@@ -11,20 +11,19 @@ import {
   ArrowUpDown,
   ClipboardList,
   Truck,
-  FileText,
   Plus,
-  Download,
   RefreshCw,
+  Loader2,
+  Download,
 } from 'lucide-react';
 
-interface KPI {
-  label: string;
-  value: string | number;
-  change?: string;
-  changeType?: 'positive' | 'negative' | 'neutral';
-  icon: React.ReactNode;
-  color: string;
-  href: string;
+interface Stats {
+  totalProductos: number;
+  totalStock: number;
+  totalValor: number;
+  stockBajo: number;
+  stockCritico: number;
+  movimientosHoy: number;
 }
 
 interface AlertaStock {
@@ -48,60 +47,63 @@ interface MovimientoReciente {
 }
 
 export default function InventarioDashboard() {
-  const [kpis] = useState<KPI[]>([
-    {
-      label: 'Total Productos',
-      value: '1,234',
-      change: '+12% vs mes anterior',
-      changeType: 'positive',
-      icon: <Package className="w-6 h-6" />,
-      color: 'bg-blue-500',
-      href: '/inventario/productos',
-    },
-    {
-      label: 'Stock Total (unid.)',
-      value: '45,678',
-      change: '+5.2%',
-      changeType: 'positive',
-      icon: <Warehouse className="w-6 h-6" />,
-      color: 'bg-green-500',
-      href: '/inventario/reportes/stock',
-    },
-    {
-      label: 'Alertas Stock Bajo',
-      value: '23',
-      change: '5 críticas',
-      changeType: 'negative',
-      icon: <AlertTriangle className="w-6 h-6" />,
-      color: 'bg-red-500',
-      href: '/inventario/productos?stock_bajo=true',
-    },
-    {
-      label: 'Valorizado Stock',
-      value: '$1,234,567',
-      change: '+8.1%',
-      changeType: 'positive',
-      icon: <TrendingUp className="w-6 h-6" />,
-      color: 'bg-purple-500',
-      href: '/inventario/reportes/valorizado',
-    },
-  ]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [alertas, setAlertas] = useState<AlertaStock[]>([]);
+  const [movimientos, setMovimientos] = useState<MovimientoReciente[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [alertas] = useState<AlertaStock[]>([
-    { id: '1', producto: 'Tornillo M8x50', codigo: 'TOR-M8-50', stock_actual: 5, stock_minimo: 50, ubicacion: 'A-01-02', severidad: 'critica' },
-    { id: '2', producto: 'Cable UTP Cat6', codigo: 'CAB-UTP-C6', stock_actual: 12, stock_minimo: 100, ubicacion: 'B-03-01', severidad: 'critica' },
-    { id: '3', producto: 'Tuerca Hex M8', codigo: 'TUE-M8', stock_actual: 8, stock_minimo: 30, ubicacion: 'A-01-03', severidad: 'critica' },
-    { id: '4', producto: 'Disco Corte 115mm', codigo: 'DIS-115', stock_actual: 15, stock_minimo: 20, ubicacion: 'C-02-01', severidad: 'baja' },
-    { id: '5', producto: 'Pintura Spray Blanca', codigo: 'PIN-SP-BL', stock_actual: 8, stock_minimo: 12, ubicacion: 'D-01-02', severidad: 'baja' },
-  ]);
+  const fetchDashboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statsRes, bajosRes, movsRes] = await Promise.all([
+        fetch('/inventario/api/stats'),
+        fetch('/inventario/api/productos?stock_bajo=true&limit=5&sort_by=stock_actual&sort_order=asc'),
+        fetch('/inventario/api/movimientos?limit=5'),
+      ]);
 
-  const [movimientosRecientes] = useState<MovimientoReciente[]>([
-    { id: '1', tipo: 'entrada', producto: 'Tornillo M8x50', cantidad: 500, ubicacion: 'A-01-02', fecha: '2024-01-15 10:30', usuario: 'Juan Pérez' },
-    { id: '2', tipo: 'salida', producto: 'Cable UTP Cat6', cantidad: 50, ubicacion: 'B-03-01', fecha: '2024-01-15 09:15', usuario: 'María López' },
-    { id: '3', tipo: 'ajuste_positivo', producto: 'Tuerca Hex M8', cantidad: 100, ubicacion: 'A-01-03', fecha: '2024-01-14 16:45', usuario: 'Carlos Ruiz' },
-    { id: '4', tipo: 'transferencia_destino', producto: 'Disco Corte 115mm', cantidad: 30, ubicacion: 'C-02-01', fecha: '2024-01-14 14:20', usuario: 'Ana García' },
-    { id: '5', tipo: 'salida', producto: 'Pintura Spray Blanca', cantidad: 24, ubicacion: 'D-01-02', fecha: '2024-01-14 11:05', usuario: 'Pedro Martín' },
-  ]);
+      const statsData = await statsRes.json();
+      if (!statsData.error) setStats(statsData);
+
+      const bajosData = await bajosRes.json();
+      if (!bajosData.error) {
+        setAlertas((bajosData.data || []).slice(0, 5).map((p: Record<string, unknown>, i: number) => ({
+          id: String(i + 1),
+          producto: p.nombre as string,
+          codigo: p.codigo as string,
+          stock_actual: p.stock_actual as number,
+          stock_minimo: p.stock_minimo as number,
+          ubicacion: ((p.ubicacion as Record<string, string> | null)?.codigo) || '—',
+          severidad: (p.stock_actual as number) <= ((p.stock_minimo as number) * 0.5) ? 'critica' as const : 'baja' as const,
+        })));
+      }
+
+      const movsData = await movsRes.json();
+      if (!movsData.error) {
+        setMovimientos((movsData.data || []).slice(0, 5).map((m: Record<string, unknown>) => ({
+          id: m.id as string,
+          tipo: m.tipo as string,
+          producto: ((m.producto as Record<string, unknown> | null)?.nombre) as string || '—',
+          cantidad: m.cantidad as number,
+          ubicacion: ((m.ubicacion_origen as Record<string, unknown> | null)?.codigo || (m.ubicacion_destino as Record<string, unknown> | null)?.codigo) as string || '—',
+          fecha: new Date(m.created_at as string).toLocaleString(),
+          usuario: ((m.usuario as Record<string, unknown> | null)?.first_name || '') + ' ' + ((m.usuario as Record<string, unknown> | null)?.last_name || ''),
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+
+  const kpis = stats ? [
+    { label: 'Total Productos', value: stats.totalProductos.toLocaleString(), change: `${stats.movimientosHoy} movs. hoy`, changeType: 'neutral' as const, icon: <Package className="w-6 h-6" />, color: 'bg-blue-500', href: '/inventario/productos' },
+    { label: 'Stock Total (unid.)', value: stats.totalStock.toLocaleString(), change: null as string | null, changeType: 'positive' as const, icon: <Warehouse className="w-6 h-6" />, color: 'bg-green-500', href: '/inventario/reportes/stock' },
+    { label: 'Alertas Stock Bajo', value: stats.stockBajo.toString(), change: `${stats.stockCritico} críticas`, changeType: 'negative' as const, icon: <AlertTriangle className="w-6 h-6" />, color: 'bg-red-500', href: '/inventario/productos?stock_bajo=true' },
+    { label: 'Valorizado Stock', value: `$${stats.totalValor.toLocaleString('es-CL')}`, change: null as string | null, changeType: 'neutral' as const, icon: <TrendingUp className="w-6 h-6" />, color: 'bg-purple-500', href: '/inventario/reportes/valorizado' },
+  ] : [];
 
   const getTipoBadge = (tipo: string) => {
     const config: Record<string, { bg: string; text: string; label: string }> = {
@@ -133,9 +135,9 @@ export default function InventarioDashboard() {
           <p className="text-neutral-500 mt-1">Visión general del stock, alertas y movimientos recientes</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button variant="outline" className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Actualizar
+          <Button variant="outline" className="gap-2" onClick={fetchDashboard} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Cargando...' : 'Actualizar'}
           </Button>
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
@@ -150,6 +152,11 @@ export default function InventarioDashboard() {
         </div>
       </div>
 
+      {loading && !stats ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi) => (
           <Link
@@ -179,6 +186,7 @@ export default function InventarioDashboard() {
           </Link>
         ))}
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
@@ -235,7 +243,7 @@ export default function InventarioDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {movimientosRecientes.map((mov) => {
+                {movimientos.map((mov) => {
                   const badge = getTipoBadge(mov.tipo);
                   return (
                     <tr key={mov.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
