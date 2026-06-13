@@ -41,7 +41,7 @@ export async function parseInventoryExcel(buffer: ArrayBuffer, mapping: ExcelMap
 
   const items: ParsedInventoryItem[] = [];
 
-  worksheet.eachRow((row, rowNumber) => {
+  worksheet.eachRow((row: any, rowNumber: number) => {
     if (rowNumber === 1) return; // Skip header
 
     const upc = row.getCell(upcIdx).value?.toString().trim();

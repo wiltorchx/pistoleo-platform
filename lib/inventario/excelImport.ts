@@ -83,7 +83,7 @@ export async function parseExcelFile(
   return items;
 }
 
-function getColumnIndex(worksheet: ExcelJS.Worksheet, columnName: string): number | undefined {
+function getColumnIndex(worksheet: any, columnName: string): number | undefined {
   const headerRow = worksheet.getRow(1);
   const values = headerRow.values as (string | number | null | undefined)[];
   for (let i = 1; i < values.length; i++) {

@@ -79,7 +79,7 @@ export default function DashboardPage() {
           </Link>
 
           <Link
-            href="/pistoleo"
+            href="/inventario"
             className="bg-white dark:bg-surface-dark-elevated rounded-2xl p-6 shadow-card border border-gray-100 dark:border-gray-800 hover:border-primary-600 transition-colors group"
           >
             <ClipboardList className="w-8 h-8 text-primary-600 mb-3" />
