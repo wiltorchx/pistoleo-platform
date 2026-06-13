@@ -30,9 +30,6 @@ export default function InventoryReviewPage() {
       setError("No hay datos pendientes de revisión. Por favor, suba un archivo en el Wizard.");
     }
   }, [pendingItems]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
-  const [error, setError] = useState<string | null>(getInitialError);
 
   const handleCommit = async () => {
     if (!batchId) {
