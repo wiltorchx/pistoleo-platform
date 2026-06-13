@@ -9,6 +9,22 @@ import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
+async function seedAdminIfNeeded() {
+  const { count } = await db.from('users').select('*', { count: 'exact', head: true });
+  if (count === 0) {
+    const passwordHash = await bcrypt.hash('Test1234', 12);
+    await db.from('users').insert({
+      first_name: 'Admin',
+      last_name: 'Sistema',
+      email: 'admin@lms.com',
+      password: passwordHash,
+      role: 'admin',
+      terms_accepted: true,
+      email_verified: true,
+    });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
@@ -21,6 +37,8 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const validated = loginSchema.parse(body);
+
+    await seedAdminIfNeeded();
 
     const { data: user, error } = await db
       .from('users')
