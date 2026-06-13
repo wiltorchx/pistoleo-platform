@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   trailingSlash: false,
   experimental: {
     // turbo: false, // Not needed for Next.js 16
