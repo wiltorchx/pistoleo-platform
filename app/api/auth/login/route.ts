@@ -28,19 +28,22 @@ export async function POST(request: Request) {
       .eq('email', validated.email)
       .single();
 
-    if (error || !user) {
+    type UserRow = { id: string; email: string; password: string; role: string; first_name: string; last_name: string; avatar_url: string | null };
+    const typedUser = user as UserRow | null;
+
+    if (error || !typedUser) {
       return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
     }
 
-    const isValidPassword = await bcrypt.compare(validated.password, user.password);
+    const isValidPassword = await bcrypt.compare(validated.password, typedUser.password);
     if (!isValidPassword) {
       return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
     }
 
     const token = await signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+      userId: typedUser.id,
+      email: typedUser.email,
+      role: typedUser.role,
     });
 
     const cookieStore = await cookies();
@@ -54,12 +57,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       user: {
-        id: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatar_url,
+        id: typedUser.id,
+        firstName: typedUser.first_name,
+        lastName: typedUser.last_name,
+        email: typedUser.email,
+        role: typedUser.role,
+        avatarUrl: typedUser.avatar_url,
       },
     });
   } catch (error) {
