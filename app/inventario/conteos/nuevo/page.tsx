@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
 import { Input } from '@/components/atoms/Input';
@@ -98,10 +98,7 @@ export default function NuevoConteoPage() {
           <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             Archivo con lista de productos (PDF, Excel o CSV)
           </label>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 transition-colors"
-          >
+          <label className="relative border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 transition-colors block">
             {file ? (
               <div className="space-y-2">
                 {file.name.endsWith('.pdf') ? (
@@ -119,8 +116,8 @@ export default function NuevoConteoPage() {
                 <p className="text-sm text-neutral-500">Soporta PDF, Excel (.xlsx) o CSV</p>
               </div>
             )}
-            <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.csv" onChange={handleFileChange} className="hidden" />
-          </div>
+            <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.csv" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+          </label>
         </div>
 
         {preview && preview.length > 0 && (
