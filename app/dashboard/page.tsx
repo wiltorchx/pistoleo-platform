@@ -93,10 +93,10 @@ export default function DashboardPage() {
         {user.role === 'admin' && (
           <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
             <Link
-              href="/admin"
+              href="/inventario"
               className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
             >
-              Ir al Panel de Administración →
+              Ir al Panel de Inventario →
             </Link>
           </div>
         )}
