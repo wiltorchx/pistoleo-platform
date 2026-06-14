@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { parseInventoryPdf } from '@/lib/pistoleo/pdfParser';
 import { parseInventoryExcel } from '@/lib/pistoleo/excelParser';
+import { parseUpcMaster } from '@/lib/pistoleo/upcMasterParser';
 import { processScan } from '@/lib/pistoleo/comparisonEngine';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { BatchRow, InventoryRow } from '@/lib/supabase-types';
@@ -46,6 +47,69 @@ export async function POST(req: Request) {
         return NextResponse.json({ items });
       }
  
+      if (action === 'upload-upc-master') {
+        const file = formData.get('file') as File;
+        if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const result = await parseUpcMaster(buffer, file.name);
+        return NextResponse.json(result);
+      }
+
+      if (action === 'upload-transfer') {
+        const batchId = formData.get('batchId') as string;
+        const file = formData.get('file') as File;
+        const upcMasterStr = formData.get('upcMaster') as string;
+
+        if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+
+        const { data: batch, error: batchError } = await db
+          .from('pistoleo_batches')
+          .select('id')
+          .eq('id', batchId)
+          .single();
+        if (batchError || !batch) {
+          return NextResponse.json({ error: 'Lote no encontrado' }, { status: 404 });
+        }
+
+        const upcMaster = upcMasterStr ? (JSON.parse(upcMasterStr) as Array<{ codigo: string; upc: string }>) : null;
+        const items = await parseInventoryExcel(await file.arrayBuffer(), {
+          upc: 'Producto',
+          description: 'Descripción',
+          quantity: 'Cantidad',
+        });
+
+        const enrichedItems = items.map(item => {
+          let upc = item.upc;
+          if (upcMaster) {
+            const masterEntry = upcMaster.find(m => m.codigo === item.upc || m.upc === item.upc);
+            if (masterEntry) upc = masterEntry.upc || item.upc;
+          }
+          return { ...item, upc };
+        });
+
+        const uniqueItems = enrichedItems.reduce<typeof enrichedItems>((acc, item) => {
+          if (!acc.find(i => i.upc === item.upc)) acc.push(item);
+          return acc;
+        }, []);
+
+        const inventoryDocs = uniqueItems.map(item => ({
+          batch_id: batchId,
+          upc: item.upc,
+          description: item.description,
+          expected_quantity: Math.round(Number(item.expectedQuantity) || 0),
+          actual_quantity: 0,
+          status: (Number(item.expectedQuantity) || 0) > 0 ? 'missing' : 'complete',
+        }));
+
+        const { error: upsertError } = await db
+          .from('pistoleo_inventory')
+          .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
+
+        if (upsertError) throw upsertError;
+
+        return NextResponse.json({ message: `Transferencia importada: ${uniqueItems.length} items`, count: uniqueItems.length });
+      }
+
       if (action === 'upload-pdf') {
         const batchId = formData.get('batchId') as string;
         const file = formData.get('file') as File;
