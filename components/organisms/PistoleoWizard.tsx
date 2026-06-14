@@ -92,6 +92,9 @@ export const PistoleoWizard = ({ onClose, onComplete, userId, initialBatchId }: 
         const body = new FormData();
         body.append('action', 'parse-pdf');
         body.append('file', file);
+        if (upcMaster) {
+          body.append('upcMaster', JSON.stringify(upcMaster));
+        }
 
         const res = await fetch('/api/pistoleo', { method: 'POST', body });
         if (res.ok) {

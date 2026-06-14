@@ -42,8 +42,29 @@ export async function POST(req: Request) {
       if (action === 'parse-pdf') {
         const file = formData.get('file') as File;
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+        const upcMasterStr = formData.get('upcMaster') as string;
         const buffer = Buffer.from(await file.arrayBuffer());
-        const items = await parseInventoryPdf(buffer);
+        let items = await parseInventoryPdf(buffer);
+
+        // Apply UPC master mapping (convert internal codes to barcodes for scanner matching)
+        if (upcMasterStr) {
+          try {
+            const upcMaster = JSON.parse(upcMasterStr) as Array<{ codigo: string; upc: string }>;
+            let mapped = 0;
+            items = items.map(item => {
+              const entry = upcMaster.find(m => m.codigo === item.upc || m.upc === item.upc);
+              if (entry && entry.upc && entry.upc !== item.upc) {
+                mapped++;
+                return { ...item, upc: entry.upc };
+              }
+              return item;
+            });
+            return NextResponse.json({ items, mapped, warning: mapped > 0 ? undefined : 'No se encontraron coincidencias con el maestro de UPCs' });
+          } catch {
+            return NextResponse.json({ error: 'Formato inválido de upcMaster' }, { status: 400 });
+          }
+        }
+
         return NextResponse.json({ items });
       }
  
@@ -113,6 +134,7 @@ export async function POST(req: Request) {
       if (action === 'upload-pdf') {
         const batchId = formData.get('batchId') as string;
         const file = formData.get('file') as File;
+        const upcMasterStr = formData.get('upcMaster') as string;
 
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
@@ -127,7 +149,23 @@ export async function POST(req: Request) {
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const items = await parseInventoryPdf(buffer);
+        let items = await parseInventoryPdf(buffer);
+
+        // Apply UPC master mapping
+        if (upcMasterStr) {
+          try {
+            const upcMaster = JSON.parse(upcMasterStr) as Array<{ codigo: string; upc: string }>;
+            items = items.map(item => {
+              const entry = upcMaster.find(m => m.codigo === item.upc || m.upc === item.upc);
+              if (entry && entry.upc && entry.upc !== item.upc) {
+                return { ...item, upc: entry.upc };
+              }
+              return item;
+            });
+          } catch {
+            return NextResponse.json({ error: 'Formato inválido de upcMaster' }, { status: 400 });
+          }
+        }
 
         // Deduplicate by UPC
         const uniqueItems = items.reduce<typeof items>((acc, item) => {
@@ -156,6 +194,7 @@ export async function POST(req: Request) {
       if (action === 'commit-inventory') {
         const batchId = formData.get('batchId') as string;
         const itemsStr = formData.get('items') as string;
+        const upcMasterStr = formData.get('upcMaster') as string;
 
         if (!batchId || !itemsStr) {
           return NextResponse.json({ error: 'Missing batchId or items' }, { status: 400 });
@@ -172,7 +211,23 @@ export async function POST(req: Request) {
         }
 
         try {
-          const items = JSON.parse(itemsStr) as Array<{ upc: string; description: string; quantity: number }>;
+          let items = JSON.parse(itemsStr) as Array<{ upc: string; description: string; quantity: number }>;
+
+          // Apply UPC master mapping
+          if (upcMasterStr) {
+            try {
+              const upcMaster = JSON.parse(upcMasterStr) as Array<{ codigo: string; upc: string }>;
+              items = items.map(item => {
+                const entry = upcMaster.find(m => m.codigo === item.upc || m.upc === item.upc);
+                if (entry && entry.upc && entry.upc !== item.upc) {
+                  return { ...item, upc: entry.upc };
+                }
+                return item;
+              });
+            } catch {
+              return NextResponse.json({ error: 'Formato inválido de upcMaster' }, { status: 400 });
+            }
+          }
           
           // Deduplicate by UPC
           const uniqueItems = items.reduce<typeof items>((acc, item) => {
