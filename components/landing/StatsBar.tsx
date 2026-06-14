@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import { TrendingUp, Users, Package, Activity } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import api from '@/shared/utils/api'
 import { AnimatedCounter } from '@/components/motion-primitives/animated-counter'
 
 const containerVariants = {
@@ -28,8 +27,9 @@ export function StatsBar() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['pistoleo-stats'],
     queryFn: async () => {
-      const res = await api.get('/v1/pistoleo/stats')
-      return res.data
+      const res = await fetch('/api/pistoleo/stats')
+      if (!res.ok) throw new Error('Failed to fetch stats')
+      return res.json()
     },
     refetchInterval: 30000,
   })
