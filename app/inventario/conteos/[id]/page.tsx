@@ -11,6 +11,8 @@ import {
 interface Item {
   id: string;
   producto: { codigo: string; nombre: string; unidad_medida: string; stock_actual: number } | null;
+  codigo: string | null;
+  nombre: string | null;
   ubicacion: { codigo: string; nombre: string } | null;
   stock_sistema: number;
   stock_fisico: number | null;
@@ -233,8 +235,8 @@ export default function ConteoDetailPage() {
                 const puedeEditar = ['borrador', 'en_progreso'].includes(conteo.estado);
                 return (
                   <tr key={item.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                    <td className="p-4 font-mono text-sm text-neutral-600">{item.producto?.codigo || '—'}</td>
-                    <td className="p-4 font-medium text-neutral-900 dark:text-white">{item.producto?.nombre || '—'}</td>
+                    <td className="p-4 font-mono text-sm text-neutral-600">{item.producto?.codigo || item.codigo || '—'}</td>
+                    <td className="p-4 font-medium text-neutral-900 dark:text-white">{item.producto?.nombre || item.nombre || '—'}</td>
                     <td className="p-4 text-center font-mono text-neutral-900 dark:text-white">{item.stock_sistema}</td>
                     <td className="p-4 text-center">
                       {puedeEditar ? (

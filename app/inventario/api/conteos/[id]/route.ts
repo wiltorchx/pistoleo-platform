@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { requireUser } from '@/lib/getUser';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
-    const { data: conteo, error } = await db
+    const { data: conteo, error } = await adminDb
       .from('inventario_conteos')
       .select('*, ubicacion:inventario_ubicaciones(*), categoria:inventario_categorias(*), usuario:users!usuario_id(first_name, last_name, email), aprobado_por_usuario:users!aprobado_por(first_name, last_name, email)')
       .eq('id', id)
@@ -17,11 +17,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Conteo no encontrado' }, { status: 404 });
     }
 
-    const { data: items, error: itemsError } = await db
+    const { data: items, error: itemsError } = await adminDb
       .from('inventario_conteo_items')
       .select('*, producto:inventario_productos(codigo, nombre, unidad_medida, stock_actual), ubicacion:inventario_ubicaciones(codigo, nombre), contado_por_usuario:users!contado_por(first_name, last_name)')
       .eq('conteo_id', id)
-      .order('producto:inventario_productos(nombre)', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (itemsError) throw itemsError;
 
@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
 
-    const { data: conteo } = await db
+    const { data: conteo } = await adminDb
       .from('inventario_conteos')
       .select('estado')
       .eq('id', id)
@@ -84,7 +84,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 });
     }
 
-    const { data, error } = await db
+    const { data, error } = await adminDb
       .from('inventario_conteos')
       .update(updates)
       .eq('id', id)
@@ -94,9 +94,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (error) throw error;
 
     if (body.estado === 'aprobado') {
-      const { data: items } = await db
+      const { data: items } = await adminDb
         .from('inventario_conteo_items')
-        .select('*, producto:inventario_productos(stock_actual)')
+        .select('*')
         .eq('conteo_id', id)
         .neq('stock_fisico', null)
         .neq('diferencia', 0);
@@ -104,9 +104,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (items) {
         for (const item of items) {
           const diff = (item.stock_fisico || 0) - item.stock_sistema;
-          await db.from('inventario_movimientos').insert({
+          const mov = {
             tipo: diff > 0 ? 'ajuste_positivo' : 'ajuste_negativo',
-            producto_id: item.producto_id,
             cantidad: Math.abs(diff),
             cantidad_anterior: item.stock_sistema,
             cantidad_nueva: item.stock_fisico || 0,
@@ -115,7 +114,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             documento_referencia: id,
             documento_tipo: 'inventario' as const,
             usuario_id: user.id,
-          });
+          } as Record<string, unknown>;
+          if (item.producto_id) mov.producto_id = item.producto_id;
+          if (item.codigo) mov.observaciones = `${mov.observaciones} (${item.codigo})`;
+          await adminDb.from('inventario_movimientos').insert(mov);
         }
       }
     }
@@ -137,7 +139,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     await requireUser();
     const { id } = await params;
 
-    const { data: conteo } = await db
+    const { data: conteo } = await adminDb
       .from('inventario_conteos')
       .select('estado')
       .eq('id', id)
@@ -154,7 +156,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       );
     }
 
-    const { error } = await db.from('inventario_conteos').delete().eq('id', id);
+    const { error } = await adminDb.from('inventario_conteos').delete().eq('id', id);
     if (error) throw error;
 
     return NextResponse.json({ success: true });

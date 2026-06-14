@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { requireUser } from '@/lib/getUser';
 
 export async function GET(req: Request) {
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
 
-    let query = db
+    let query = adminDb
       .from('inventario_conteos')
       .select('*, ubicacion:inventario_ubicaciones(codigo, nombre), categoria:inventario_categorias(nombre, color), usuario:users!usuario_id(first_name, last_name), aprobado_por_usuario:users!aprobado_por(first_name, last_name)', { count: 'exact' });
 
@@ -33,25 +33,25 @@ export async function GET(req: Request) {
     if (error) throw error;
 
     const enriched = await Promise.all((data || []).map(async (c) => {
-      const { count: totalItems } = await db
+      const { count: totalItems } = await adminDb
         .from('inventario_conteo_items')
         .select('*', { count: 'exact', head: true })
         .eq('conteo_id', c.id);
 
-      const { count: itemsContados } = await db
+      const { count: itemsContados } = await adminDb
         .from('inventario_conteo_items')
         .select('*', { count: 'exact', head: true })
         .eq('conteo_id', c.id)
         .neq('stock_fisico', null);
 
-      const { count: itemsConDiferencia } = await db
+      const { count: itemsConDiferencia } = await adminDb
         .from('inventario_conteo_items')
         .select('*', { count: 'exact', head: true })
         .eq('conteo_id', c.id)
         .neq('diferencia', 0)
         .neq('stock_fisico', null);
 
-      const { data: diffs } = await db
+      const { data: diffs } = await adminDb
         .from('inventario_conteo_items')
         .select('diferencia')
         .eq('conteo_id', c.id)
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'El nombre del conteo es obligatorio' }, { status: 400 });
     }
 
-    const { data: conteo, error: conteoError } = await db
+    const { data: conteo, error: conteoError } = await adminDb
       .from('inventario_conteos')
       .insert({
         nombre: body.nombre,
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
 
     if (conteoError) throw conteoError;
 
-    let query = db.from('inventario_productos').select('id, stock_actual');
+    let query = adminDb.from('inventario_productos').select('id, stock_actual');
 
     if (body.ubicacion_id) {
       query = query.eq('ubicacion_id', body.ubicacion_id);
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
         stock_sistema: p.stock_actual,
       }));
 
-      const { error: itemsError } = await db
+      const { error: itemsError } = await adminDb
         .from('inventario_conteo_items')
         .insert(items);
 

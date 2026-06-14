@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { requireUser } from '@/lib/getUser';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +10,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const page = parseInt(searchParams.get('page') || '1');
     const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
 
-    let query = db
+    let query = adminDb
       .from('inventario_conteo_items')
       .select('*, producto:inventario_productos(codigo, nombre, unidad_medida, stock_actual), ubicacion:inventario_ubicaciones(codigo, nombre), contado_por_usuario:users!contado_por(first_name, last_name)', { count: 'exact' })
       .eq('conteo_id', id);
@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const to = from + limit - 1;
 
     const { data, error, count } = await query
-      .order('producto:inventario_productos(nombre)', { ascending: true })
+      .order('created_at', { ascending: true })
       .range(from, to);
 
     if (error) throw error;
@@ -47,7 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
 
-    const { data: conteo } = await db
+    const { data: conteo } = await adminDb
       .from('inventario_conteos')
       .select('estado')
       .eq('id', id)
@@ -80,7 +80,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       if (item.observaciones) updateData.observaciones = item.observaciones;
 
-      const { data, error } = await db
+      const { data, error } = await adminDb
         .from('inventario_conteo_items')
         .update(updateData)
         .eq('id', item.id)
