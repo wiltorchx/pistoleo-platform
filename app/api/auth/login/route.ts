@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { db } from '@/lib/db';
+import { getAdminClient } from '@/lib/supabase-admin';
 import { loginSchema } from '@/lib/validations';
 import { signToken } from '@/lib/jwt';
 import { rateLimit } from '@/lib/rateLimit';
@@ -23,8 +23,8 @@ export async function POST(request: Request) {
     const validated = loginSchema.parse(body);
     const email = validated.email;
 
-    let { data: user, error } = await db
-      .from('users')
+    const admin = getAdminClient() as any
+    let { data: user, error } = await admin.from('users')
       .select('*')
       .eq('email', email)
       .single();
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       const passwordHash = await bcrypt.hash(validated.password, 12);
-      const { data: newUser, error: insertError } = await db
+      const { data: newUser, error: insertError } = await admin
         .from('users')
         .insert({
           first_name: validated.email,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       const isValidPassword = await bcrypt.compare(validated.password, typedUser.password);
       if (!isValidPassword) {
         const passwordHash = await bcrypt.hash(validated.password, 12);
-        const { data: updatedUser, error: updateError } = await db
+        const { data: updatedUser, error: updateError } = await admin
           .from('users')
           .update({ password: passwordHash })
           .eq('email', email)
