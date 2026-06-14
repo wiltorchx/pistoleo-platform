@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
 import {
   ClipboardList, Loader2, CheckCircle2, XCircle, Play,
-  ArrowLeft, Save, AlertTriangle, Trash2,
+  ArrowLeft, Save, AlertTriangle, Trash2, Search,
 } from 'lucide-react';
 
 interface Item {
@@ -48,6 +48,7 @@ export default function ConteoDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
 
   const fetchConteo = async () => {
     setLoading(true);
@@ -134,6 +135,13 @@ export default function ConteoDetailPage() {
     return <div className="text-center py-20 text-neutral-500">Conteo no encontrado</div>;
   }
 
+  const filteredItems = conteo.items.filter((i) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const cod = (i.producto?.codigo || i.codigo || '').toLowerCase();
+    const nom = (i.producto?.nombre || i.nombre || '').toLowerCase();
+    return cod.includes(q) || nom.includes(q);
+  });
   const totalItems = conteo.items.length;
   const itemsContados = conteo.items.filter((i) => i.stock_fisico !== null).length;
   const itemsConDiferencia = conteo.items.filter((i) => i.diferencia !== 0 && i.stock_fisico !== null).length;
@@ -213,8 +221,18 @@ export default function ConteoDetailPage() {
       )}
 
       <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+        <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="font-semibold text-lg text-neutral-900 dark:text-white">Items del Conteo</h2>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por código o nombre..."
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder-neutral-400"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -229,7 +247,11 @@ export default function ConteoDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {conteo.items.map((item) => {
+              {filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-neutral-500 text-sm">No se encontraron items</td>
+                </tr>
+              ) : filteredItems.map((item) => {
                 const eb = estadoBadge[item.estado] || estadoBadge.pendiente;
                 const diff = item.stock_fisico !== null ? item.stock_fisico - item.stock_sistema : 0;
                 const puedeEditar = ['borrador', 'en_progreso'].includes(conteo.estado);

@@ -65,9 +65,8 @@ export async function POST(req: Request) {
       itemsToInsert.push({
         conteo_id: conteo.id,
         producto_id: productoId,
-        stock_sistema: 0,
-        stock_fisico: item.cantidad,
-        estado: 'contado',
+        stock_sistema: item.cantidad,
+        estado: 'pendiente',
       });
     }
 
