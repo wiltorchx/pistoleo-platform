@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
-import { verifyToken, JWTPayload } from './jwt';
-import { db } from './db';
+import { verifyToken } from './jwt';
+import { getAdminClient } from './supabase-admin';
 
 export async function getCurrentUser(): Promise<{ id: string; first_name: string; last_name: string; email: string; role: string } | null> {
   try {
@@ -11,7 +11,7 @@ export async function getCurrentUser(): Promise<{ id: string; first_name: string
     const payload = await verifyToken(token);
     if (!payload) return null;
 
-    const { data: user } = await db
+    const { data: user } = await (getAdminClient() as any)
       .from('users')
       .select('id, first_name, last_name, email, role')
       .eq('id', payload.userId)

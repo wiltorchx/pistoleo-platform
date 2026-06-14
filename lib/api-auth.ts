@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { verifyToken } from './jwt';
-import { db } from './db';
+import { getAdminClient } from './supabase-admin';
 
 export interface AuthenticatedUser {
   id: string;
@@ -22,7 +22,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
       return null;
     }
 
-    const { data: user, error } = await db
+    const { data: user, error } = await (getAdminClient() as any)
       .from('users')
       .select('id, email, role')
       .eq('id', payload.userId)
