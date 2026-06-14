@@ -41,11 +41,7 @@ export default function InventarioDashboard() {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  const kpis = stats ? [
-    { label: 'Total Productos', value: stats.totalProductos.toLocaleString(), change: null as string | null, changeType: 'neutral' as const, icon: <Package className="w-6 h-6" />, color: 'bg-blue-500', href: '#' },
-    { label: 'Stock Total (unid.)', value: stats.totalStock.toLocaleString(), change: null as string | null, changeType: 'positive' as const, icon: <Package className="w-6 h-6" />, color: 'bg-green-500', href: '#' },
-    { label: 'Alertas Stock Bajo', value: stats.stockBajo.toString(), change: `${stats.stockCritico} críticas`, changeType: 'negative' as const, icon: <AlertTriangle className="w-6 h-6" />, color: 'bg-red-500', href: '#' },
-  ] : [];
+
 
   return (
     <div className="space-y-8">
@@ -68,62 +64,7 @@ export default function InventarioDashboard() {
         </div>
       </div>
 
-      {loading && !stats ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-        </div>
-      ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {kpis.map((kpi) => (
-          kpi.href === '#' ? (
-            <div key={kpi.label} className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{kpi.label}</p>
-                  <p className="text-3xl font-bold text-neutral-900 dark:text-white mt-2">{kpi.value}</p>
-                  {kpi.change && (
-                    <p className={`text-sm mt-1 flex items-center gap-1 ${
-                      kpi.changeType === 'positive' ? 'text-green-600' :
-                      kpi.changeType === 'negative' ? 'text-red-600' : 'text-neutral-500'
-                    }`}>
-                      {kpi.changeType === 'negative' && <AlertTriangle className="w-3.5 h-3.5" />}
-                      {kpi.change}
-                    </p>
-                  )}
-                </div>
-                <div className={`${kpi.color} rounded-xl p-3`}>
-                  {kpi.icon}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Link
-              key={kpi.label}
-              href={kpi.href}
-              className="group bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800 transition-all"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{kpi.label}</p>
-                  <p className="text-3xl font-bold text-neutral-900 dark:text-white mt-2">{kpi.value}</p>
-                  {kpi.change && (
-                    <p className={`text-sm mt-1 flex items-center gap-1 ${
-                      kpi.changeType === 'positive' ? 'text-green-600' :
-                      kpi.changeType === 'negative' ? 'text-red-600' : 'text-neutral-500'
-                    }`}>
-                      {kpi.change}
-                    </p>
-                  )}
-                </div>
-                <div className={`${kpi.color} rounded-xl p-3`}>
-                  {kpi.icon}
-                </div>
-              </div>
-            </Link>
-          )
-        ))}
-      </div>
-      )}
+
 
       <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6">
         <h2 className="font-semibold text-lg text-neutral-900 dark:text-white mb-4">Acciones Rápidas</h2>
