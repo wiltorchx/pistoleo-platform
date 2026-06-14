@@ -4,7 +4,7 @@ import { IUser } from '@/types';
 interface AuthState {
   user: IUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<'admin'>;
+  login: (username: string, password: string) => Promise<'admin'>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
 }
@@ -12,11 +12,11 @@ interface AuthState {
 export const useAuth = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
-  login: async (email, password) => {
+  login: async (username, password) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Error al iniciar sesión');

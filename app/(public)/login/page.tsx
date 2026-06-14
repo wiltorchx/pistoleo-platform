@@ -24,7 +24,7 @@ function LoginForm() {
   const onSubmit = async (data: LoginInput) => {
     setError('');
     try {
-      await login(data.email, data.password);
+      await login(data.username, data.password);
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
@@ -46,7 +46,7 @@ function LoginForm() {
           </div>
         )}
 
-        <Input label="Email" type="text" error={errors.email?.message} {...register('email')} />
+        <Input label="Usuario o Email" type="text" error={errors.username?.message} {...register('username')} />
         <Input label="Contraseña" type="password" error={errors.password?.message} {...register('password')} />
 
         <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
