@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/atoms/Button';
 import { Loader2, Package, Download, Printer } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface Producto {
   id: string;
@@ -43,6 +44,27 @@ export default function ReporteStockPage() {
   const totalValor = productos.reduce((s, p) => s + p.valor_stock, 0);
   const stockBajo = productos.filter(p => p.stock_bajo).length;
 
+  const catData = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of productos) {
+      const name = p.categoria?.nombre || 'Sin categoría';
+      map.set(name, (map.get(name) || 0) + p.stock_actual);
+    }
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+  }, [productos]);
+
+  const statusData = useMemo(() => [
+    { name: 'Stock Normal', value: productos.filter(p => !p.stock_bajo).length, color: '#22c55e' },
+    { name: 'Stock Bajo', value: stockBajo, color: '#ef4444' },
+  ], [productos, stockBajo]);
+
+  const topBajo = useMemo(() =>
+    productos.filter(p => p.stock_bajo).slice(0, 5),
+  [productos]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -72,6 +94,52 @@ export default function ReporteStockPage() {
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
           <p className="text-xs text-neutral-500">Stock Bajo</p>
           <p className={`text-2xl font-bold ${stockBajo > 0 ? 'text-red-600' : 'text-neutral-900 dark:text-white'}`}>{stockBajo}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-4">Stock por Categoría</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={catData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-4">Estado del Stock</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                {statusData.map((e) => <Cell key={e.name} fill={e.color} />)}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-3">Alertas de Stock Bajo</h3>
+          {topBajo.length === 0 ? (
+            <p className="text-sm text-green-600 font-medium">No hay productos con stock bajo</p>
+          ) : (
+            <div className="space-y-2">
+              {topBajo.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-sm">
+                  <div className="truncate min-w-0">
+                    <span className="font-mono text-xs text-primary-600">{p.codigo}</span>
+                    <span className="ml-1 text-neutral-700 dark:text-neutral-300 truncate">{p.nombre}</span>
+                  </div>
+                  <span className="ml-2 font-mono text-red-600 font-semibold shrink-0">{p.stock_actual} / {p.stock_minimo}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

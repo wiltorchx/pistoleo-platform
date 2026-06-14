@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/atoms/Button';
 import { Loader2, TrendingUp, Download, Printer } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Producto {
   id: string;
@@ -47,6 +48,17 @@ export default function ReporteValorizadoPage() {
     return acc;
   }, {});
 
+  const compData = useMemo(() =>
+    Object.entries(categorias)
+      .map(([name, d]) => ({ name, costo: Math.round(d.valor), venta: Math.round(d.venta) }))
+      .sort((a, b) => b.venta - a.venta)
+      .slice(0, 8),
+  [categorias]);
+
+  const topValor = useMemo(() =>
+    [...productos].sort((a, b) => b.valor_stock - a.valor_stock).slice(0, 5),
+  [productos]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -76,6 +88,43 @@ export default function ReporteValorizadoPage() {
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
           <p className="text-xs text-neutral-500">Margen %</p>
           <p className="text-2xl font-bold text-purple-600">{margenPorcentaje}%</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-4">Costo vs Venta por Categoría</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={compData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="costo" fill="#3b82f6" name="Costo" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="venta" fill="#22c55e" name="Venta" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-3">Top 5 Valor</h3>
+          {topValor.length === 0 ? (
+            <p className="text-sm text-neutral-500">Sin datos</p>
+          ) : (
+            <div className="space-y-3">
+              {topValor.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-neutral-400 w-4">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-neutral-900 dark:text-white truncate">{p.nombre}</p>
+                    <p className="text-xs text-neutral-500 font-mono">{p.codigo}</p>
+                  </div>
+                  <span className="text-sm font-mono font-semibold text-green-600">${p.valor_stock.toLocaleString('es-CL')}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

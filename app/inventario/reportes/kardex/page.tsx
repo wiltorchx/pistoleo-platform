@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/atoms/Button';
 import { Loader2, BarChart3, Download, Printer } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface Movimiento {
   id: string;
@@ -31,6 +32,8 @@ const tipoBadge: Record<string, { bg: string; text: string; label: string }> = {
   devolucion_proveedor: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700', label: 'Dev.' },
   inventario_inicial: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700', label: 'Inv. Inicial' },
 };
+
+const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#a855f7', '#6366f1', '#6b7280', '#14b8a6'];
 
 export default function ReporteKardexPage() {
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
@@ -65,6 +68,28 @@ export default function ReporteKardexPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const tipoData = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of movimientos) {
+      const label = tipoBadge[m.tipo]?.label || m.tipo;
+      map.set(label, (map.get(label) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [movimientos]);
+
+  const movTrend = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of movimientos) {
+      const day = m.created_at?.slice(0, 10);
+      if (day) map.set(day, (map.get(day) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([date, cantidad]) => ({ date: date.slice(5), cantidad }))
+      .slice(0, 30);
+  }, [movimientos]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -75,6 +100,33 @@ export default function ReporteKardexPage() {
         <div className="flex gap-3">
           <Button variant="outline" className="gap-2"><Printer className="w-4 h-4" /> Imprimir</Button>
           <Button variant="outline" className="gap-2"><Download className="w-4 h-4" /> Exportar</Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-4">Distribución por Tipo</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={tipoData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" nameKey="name" label={({ name, value }) => `${name}: ${value}`}>
+                {tipoData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase mb-4">Movimientos Recientes</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={movTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Bar dataKey="cantidad" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
