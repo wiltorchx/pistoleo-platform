@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Button } from '@/components/atoms/Button';
-import { Package, LogOut, User, ClipboardList } from 'lucide-react';
+import { Package, LogOut, User, ClipboardList, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -66,7 +66,7 @@ export default function DashboardPage() {
           <p className="mt-1 text-gray-600 dark:text-gray-400">Bienvenido al Panel de Pistoleo Extreme</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link
             href="/pistoleo"
             className="bg-white dark:bg-surface-dark-elevated rounded-2xl p-6 shadow-card border border-gray-100 dark:border-gray-800 hover:border-primary-600 transition-colors group"
@@ -87,6 +87,17 @@ export default function DashboardPage() {
               Inventarios
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulta y gestión de existencias</p>
+          </Link>
+
+          <Link
+            href="/inventario/reportes"
+            className="bg-white dark:bg-surface-dark-elevated rounded-2xl p-6 shadow-card border border-gray-100 dark:border-gray-800 hover:border-primary-600 transition-colors group"
+          >
+            <BarChart3 className="w-8 h-8 text-primary-600 mb-3" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-primary-600">
+              Reportes
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Kardex y conteos realizados</p>
           </Link>
         </div>
 
