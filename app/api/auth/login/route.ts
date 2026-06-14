@@ -12,11 +12,11 @@ export const runtime = 'nodejs';
 async function seedAdminIfNeeded() {
   const { count, error } = await db.from('users').select('*', { count: 'exact', head: true });
   if (!error && count === 0) {
-    const passwordHash = await bcrypt.hash('Test1234', 12);
+    const passwordHash = await bcrypt.hash('1234', 12);
     await db.from('users').insert({
-      first_name: 'Admin',
-      last_name: 'Sistema',
-      email: 'admin@lms.com',
+      first_name: 'Will',
+      last_name: '',
+      email: 'will',
       password: passwordHash,
       role: 'admin',
       terms_accepted: true,

@@ -10,11 +10,11 @@ export async function GET() {
     if (count && count > 0) {
       return NextResponse.json({ message: 'Ya existen usuarios en el sistema. No se requiere seed.' });
     }
-    const passwordHash = await bcrypt.hash('Test1234', 12);
+    const passwordHash = await bcrypt.hash('1234', 12);
     const { error } = await db.from('users').insert({
-      first_name: 'Admin',
-      last_name: 'Sistema',
-      email: 'admin@lms.com',
+      first_name: 'Will',
+      last_name: '',
+      email: 'will',
       password: passwordHash,
       role: 'admin',
       terms_accepted: true,
@@ -25,7 +25,7 @@ export async function GET() {
     }
     return NextResponse.json({
       message: 'Usuario admin creado exitosamente',
-      credentials: { email: 'admin@lms.com', password: 'Test1234' },
+      credentials: { email: 'will', password: '1234' },
     });
   } catch (error) {
     return NextResponse.json(
