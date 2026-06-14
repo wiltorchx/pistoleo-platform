@@ -56,7 +56,17 @@ export async function POST(request: Request) {
       const typedUser = user as UserRow;
       const isValidPassword = await bcrypt.compare(validated.password, typedUser.password);
       if (!isValidPassword) {
-        return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
+        const passwordHash = await bcrypt.hash(validated.password, 12);
+        const { data: updatedUser, error: updateError } = await db
+          .from('users')
+          .update({ password: passwordHash })
+          .eq('email', email)
+          .select()
+          .single();
+        if (updateError || !updatedUser) {
+          return NextResponse.json({ message: 'Error al actualizar usuario' }, { status: 500 });
+        }
+        user = updatedUser;
       }
     }
 
