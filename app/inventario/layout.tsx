@@ -5,27 +5,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  Package,
-  Warehouse,
-  Tag,
-  ArrowUpDown,
   ClipboardList,
-  Truck,
   FileText,
+  Package,
   ChevronLeft,
   ChevronRight,
   Menu,
-  X,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/inventario', icon: LayoutDashboard },
-  { name: 'Productos', href: '/inventario/productos', icon: Package },
-  { name: 'Ubicaciones', href: '/inventario/ubicaciones', icon: Warehouse },
-  { name: 'Categorías', href: '/inventario/categorias', icon: Tag },
-  { name: 'Movimientos', href: '/inventario/movimientos', icon: ArrowUpDown },
   { name: 'Conteos', href: '/inventario/conteos', icon: ClipboardList },
-  { name: 'Transferencias', href: '/inventario/transferencias', icon: Truck },
   { name: 'Reportes', href: '/inventario/reportes', icon: FileText },
 ];
 
