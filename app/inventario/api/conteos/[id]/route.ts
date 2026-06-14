@@ -149,13 +149,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Conteo no encontrado' }, { status: 404 });
     }
 
-    if (conteo.estado !== 'borrador') {
-      return NextResponse.json(
-        { error: 'Solo se pueden eliminar conteos en estado borrador' },
-        { status: 409 }
-      );
-    }
-
     const { error } = await adminDb.from('inventario_conteos').delete().eq('id', id);
     if (error) throw error;
 
