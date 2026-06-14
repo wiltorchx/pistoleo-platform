@@ -39,9 +39,6 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-surface-light-muted dark:bg-surface-dark">
       <header className="bg-white dark:bg-surface-dark-elevated border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-primary-600">
-            Pistoleo
-          </Link>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <User className="w-4 h-4" />
