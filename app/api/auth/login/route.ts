@@ -72,6 +72,14 @@ export async function POST(request: Request) {
 
     const typedUser = user as UserRow;
 
+    if (typedUser.email && (typedUser.email.match(/@/g) || []).length > 1) {
+      const cleanEmail = typedUser.email.split('@').slice(0, 2).join('@');
+      const cleanName = typedUser.first_name?.split('@').slice(0, 2).join('@') || cleanEmail.split('@')[0];
+      await admin.from('users').update({ email: cleanEmail, first_name: cleanName }).eq('id', typedUser.id);
+      typedUser.email = cleanEmail;
+      typedUser.first_name = cleanName;
+    }
+
     const token = await signToken({
       userId: typedUser.id,
       email: typedUser.email,

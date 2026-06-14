@@ -32,12 +32,24 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
+    const sanitize = (v: string) => {
+      const parts = v.split('@');
+      if (parts.length > 2) return parts.slice(0, 2).join('@');
+      return v;
+    };
+    const cleanEmail = sanitize(typedUser.email);
+    const cleanName = sanitize(typedUser.first_name);
+
+    if (cleanEmail !== typedUser.email || cleanName !== typedUser.first_name) {
+      await adminDb.from('users').update({ email: cleanEmail, first_name: cleanName }).eq('id', typedUser.id);
+    }
+
     return NextResponse.json({
       user: {
         id: typedUser.id,
-        firstName: typedUser.first_name,
+        firstName: cleanName,
         lastName: typedUser.last_name,
-        email: typedUser.email,
+        email: cleanEmail,
         role: typedUser.role,
         avatarUrl: typedUser.avatar_url,
       },
