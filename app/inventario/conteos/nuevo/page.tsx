@@ -26,6 +26,7 @@ export default function NuevoConteoPage() {
       const baseName = f.name.replace(/\.[^/.]+$/, '');
       setNombre(`Conteo desde ${baseName}`);
     }
+    showPreview(f);
   };
 
   const handleImport = async () => {
@@ -53,8 +54,8 @@ export default function NuevoConteoPage() {
     }
   };
 
-  const showPreview = () => {
-    if (!file) return;
+  const showPreview = (f: File) => {
+    if (!f) return;
     const reader = new FileReader();
     reader.onload = async (e) => {
       const text = e.target?.result as string;
@@ -66,8 +67,8 @@ export default function NuevoConteoPage() {
       });
       setPreview(previewItems);
     };
-    if (file.name.endsWith('.csv') || file.type === 'text/csv' || file.type === 'text/plain') {
-      reader.readAsText(file);
+    if (f.name.endsWith('.csv') || f.type === 'text/csv' || f.type === 'text/plain') {
+      reader.readAsText(f);
     } else {
       setPreview([{ codigo: '...', descripcion: 'Archivo procesado en el servidor', cantidad: 0 }]);
     }
@@ -118,7 +119,7 @@ export default function NuevoConteoPage() {
                 <p className="text-sm text-neutral-500">Soporta PDF, Excel (.xlsx) o CSV</p>
               </div>
             )}
-            <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.csv" onChange={(e) => { handleFileChange(e); setTimeout(showPreview, 100); }} className="hidden" />
+            <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.csv" onChange={handleFileChange} className="hidden" />
           </div>
         </div>
 
