@@ -56,7 +56,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const transitions: Record<string, string[]> = {
         borrador: ['en_progreso'],
         en_progreso: ['finalizado'],
-        finalizado: ['aprobado', 'rechazado'],
+        finalizado: ['aprobado', 'rechazado', 'en_progreso'],
       };
 
       const allowed = transitions[conteo.estado] || [];

@@ -94,7 +94,7 @@ export default function ConteoDetailPage() {
   const handleCambiarEstado = async (estado: string) => {
     if (!conteo) return;
     const mensajes: Record<string, string> = {
-      en_progreso: '¿Iniciar el conteo?',
+      en_progreso: conteo.estado === 'borrador' ? '¿Iniciar el conteo?' : '¿Reabrir el conteo para editar?',
       finalizado: '¿Finalizar el conteo?',
       aprobado: '¿Aprobar el conteo? Se generarán ajustes automáticos.',
       rechazado: '¿Rechazar el conteo?',
@@ -202,7 +202,7 @@ export default function ConteoDetailPage() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Guardar Conteos
           </Button>
-          {(itemsContados + pendingEdits) >= totalItems && conteo.estado === 'en_progreso' && (
+          {conteo.estado === 'en_progreso' && (
             <Button onClick={() => handleCambiarEstado('finalizado')} variant="outline" className="gap-2">
               <CheckCircle2 className="w-4 h-4" /> Finalizar Conteo
             </Button>
@@ -217,6 +217,9 @@ export default function ConteoDetailPage() {
           </Button>
           <Button onClick={() => handleCambiarEstado('rechazado')} variant="outline" className="gap-2 text-red-600">
             <XCircle className="w-4 h-4" /> Rechazar
+          </Button>
+          <Button onClick={() => handleCambiarEstado('en_progreso')} variant="outline" className="gap-2">
+            <Play className="w-4 h-4" /> Reabrir Conteo
           </Button>
         </div>
       )}
@@ -239,6 +242,7 @@ export default function ConteoDetailPage() {
           <table className="w-full">
             <thead className="bg-neutral-50 dark:bg-neutral-800/50">
               <tr>
+                <th className="p-4 text-center text-xs font-semibold text-neutral-500 uppercase tracking-wider w-10">#</th>
                 <th className="p-4 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Código</th>
                 <th className="p-4 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Producto</th>
                 <th className="p-4 text-center text-xs font-semibold text-neutral-500 uppercase tracking-wider">Stock Sistema</th>
@@ -250,14 +254,15 @@ export default function ConteoDetailPage() {
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-neutral-500 text-sm">No se encontraron items</td>
+                  <td colSpan={7} className="p-8 text-center text-neutral-500 text-sm">No se encontraron items</td>
                 </tr>
-              ) : filteredItems.map((item) => {
+              ) : filteredItems.map((item, idx) => {
                 const eb = estadoBadge[item.estado] || estadoBadge.pendiente;
                 const diff = item.stock_fisico !== null ? item.stock_fisico - item.stock_sistema : 0;
-                const puedeEditar = ['borrador', 'en_progreso'].includes(conteo.estado);
+                const puedeEditar = conteo.estado === 'en_progreso';
                 return (
                   <tr key={item.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                    <td className="p-4 text-center text-sm text-neutral-400 font-mono">{idx + 1}</td>
                     <td className="p-4 font-mono text-sm text-neutral-600">{item.producto?.codigo || item.codigo || '—'}</td>
                     <td className="p-4 font-medium text-neutral-900 dark:text-white">{item.producto?.nombre || item.nombre || '—'}</td>
                     <td className="p-4 text-center font-mono text-neutral-900 dark:text-white">{item.stock_sistema}</td>
@@ -293,6 +298,70 @@ export default function ConteoDetailPage() {
           </table>
         </div>
       </div>
+
+      {conteo.estado === 'finalizado' && (
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4">
+          <h2 className="font-semibold text-lg text-neutral-900 dark:text-white">Reporte de Conteo</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <p className="text-xs text-green-600 dark:text-green-400">Sin Diferencia</p>
+              <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                {conteo.items.filter(i => i.stock_fisico !== null && (i.stock_fisico - i.stock_sistema) === 0).length}
+              </p>
+            </div>
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
+              <p className="text-xs text-red-600 dark:text-red-400">Con Diferencia</p>
+              <p className="text-xl font-bold text-red-700 dark:text-red-300">{itemsConDiferencia}</p>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+              <p className="text-xs text-blue-600 dark:text-blue-400">Sin Contar</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                {totalItems - itemsContados}
+              </p>
+            </div>
+            <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+              <p className="text-xs text-neutral-500">Total Items</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-white">{totalItems}</p>
+            </div>
+          </div>
+          {itemsConDiferencia > 0 && (
+            <div className="bg-red-50 dark:bg-red-900/10 rounded-xl overflow-hidden">
+              <div className="p-3 border-b border-red-200 dark:border-red-800">
+                <span className="text-sm font-medium text-red-700 dark:text-red-300">Items con Diferencia</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-red-200 dark:border-red-800">
+                      <th className="p-2 text-left text-xs font-semibold text-red-600 uppercase">Código</th>
+                      <th className="p-2 text-left text-xs font-semibold text-red-600 uppercase">Producto</th>
+                      <th className="p-2 text-center text-xs font-semibold text-red-600 uppercase">Stock Sistema</th>
+                      <th className="p-2 text-center text-xs font-semibold text-red-600 uppercase">Stock Físico</th>
+                      <th className="p-2 text-center text-xs font-semibold text-red-600 uppercase">Diferencia</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-200 dark:divide-red-800">
+                    {conteo.items.filter(i => i.stock_fisico !== null && (i.stock_fisico - i.stock_sistema) !== 0).map(item => {
+                      const diff = item.stock_fisico! - item.stock_sistema;
+                      return (
+                        <tr key={item.id}>
+                          <td className="p-2 font-mono text-xs text-neutral-900 dark:text-white">{item.producto?.codigo || item.codigo}</td>
+                          <td className="p-2 text-xs text-neutral-600 dark:text-neutral-400">{item.producto?.nombre || item.nombre}</td>
+                          <td className="p-2 text-center font-mono text-xs">{item.stock_sistema}</td>
+                          <td className="p-2 text-center font-mono text-xs">{item.stock_fisico}</td>
+                          <td className={`p-2 text-center font-mono text-xs font-semibold ${diff > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {diff > 0 ? '+' : ''}{diff}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

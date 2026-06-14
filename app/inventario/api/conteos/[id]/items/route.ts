@@ -57,7 +57,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'Conteo no encontrado' }, { status: 404 });
     }
 
-    if (!['borrador', 'en_progreso'].includes(conteo.estado)) {
+    if (!['en_progreso', 'finalizado'].includes(conteo.estado)) {
       return NextResponse.json(
         { error: 'Solo se pueden modificar items en conteos en progreso' },
         { status: 409 }
