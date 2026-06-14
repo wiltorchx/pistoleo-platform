@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { count } = await db.from('users').select('*', { count: 'exact', head: true });
-    if (count && count > 0) {
-      return NextResponse.json({ message: 'Ya existen usuarios en el sistema. No se requiere seed.' });
+    const { data: existing } = await db.from('users').select('id').eq('email', 'will').single();
+    if (existing) {
+      return NextResponse.json({ message: 'El usuario will ya existe.' });
     }
     const passwordHash = await bcrypt.hash('1234', 12);
     const { error } = await db.from('users').insert({

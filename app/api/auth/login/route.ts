@@ -10,19 +10,18 @@ import { rateLimit } from '@/lib/rateLimit';
 export const runtime = 'nodejs';
 
 async function seedAdminIfNeeded() {
-  const { count, error } = await db.from('users').select('*', { count: 'exact', head: true });
-  if (!error && count === 0) {
-    const passwordHash = await bcrypt.hash('1234', 12);
-    await db.from('users').insert({
-      first_name: 'Will',
-      last_name: '',
-      email: 'will',
-      password: passwordHash,
-      role: 'admin',
-      terms_accepted: true,
-      email_verified: true,
-    });
-  }
+  const { data: existing } = await db.from('users').select('id').eq('email', 'will').single();
+  if (existing) return;
+  const passwordHash = await bcrypt.hash('1234', 12);
+  await db.from('users').insert({
+    first_name: 'Will',
+    last_name: '',
+    email: 'will',
+    password: passwordHash,
+    role: 'admin',
+    terms_accepted: true,
+    email_verified: true,
+  });
 }
 
 export async function POST(request: Request) {
