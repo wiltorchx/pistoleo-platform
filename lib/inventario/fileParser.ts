@@ -56,13 +56,19 @@ function detectCsvColumns(headers: string[]): { colCodigo: number; colCantidad: 
   return { colCodigo, colCantidad };
 }
 
-function parseNumber(value: string): number {
-  const cleaned = value
-    .replace(/\./g, '')
-    .replace(',', '.')
-    .replace(/[^0-9.\-]/g, '');
+function parseNumber(value: string, format: 'chilean' | 'english' = 'chilean'): number {
+  let cleaned: string;
+  if (format === 'english') {
+    cleaned = value.replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+  } else {
+    cleaned = value.replace(/\./g, '').replace(',', '.').replace(/[^0-9.\-]/g, '');
+  }
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
+}
+
+function parsePdfQuantity(value: string): number {
+  return parseNumber(value, 'english');
 }
 
 export async function parseFile(buffer: Buffer, fileName: string, mimeType: string): Promise<ParseResult> {
@@ -102,7 +108,7 @@ async function parsePdf(buffer: Buffer, fileName: string): Promise<ParseResult> 
 
     const qtyMatchSameLine = line.match(/\)(\d+[\d,]*\.?\d*)\s*Unidad/);
     if (qtyMatchSameLine) {
-      const cantidad = parseNumber(qtyMatchSameLine[1]);
+      const cantidad = parsePdfQuantity(qtyMatchSameLine[1]);
       description = description.replace(/\)[\d,]+\.?\d*\s*Unidad$/, ')').trim();
       items.push({ codigo, descripcion: cleanDesc(description), cantidad });
       i++;
@@ -122,7 +128,7 @@ async function parsePdf(buffer: Buffer, fileName: string): Promise<ParseResult> 
 
       const qtyMatch = nextLine.match(/^(\d+[\d,]*\.?\d*)\s*Unidad/);
       if (qtyMatch) {
-        const cantidad = parseNumber(qtyMatch[1]);
+        const cantidad = parsePdfQuantity(qtyMatch[1]);
         const fullDesc = descLines.join(' ').trim();
         items.push({ codigo, descripcion: cleanDesc(fullDesc), cantidad });
         i++;
