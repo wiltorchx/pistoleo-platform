@@ -144,8 +144,9 @@ export default function ConteoDetailPage() {
   });
   const totalItems = conteo.items.length;
   const itemsContados = conteo.items.filter((i) => i.stock_fisico !== null).length;
+  const pendingEdits = conteo.items.filter((i) => editValues[i.id] !== (i.stock_fisico?.toString() || '')).length;
   const itemsConDiferencia = conteo.items.filter((i) => i.diferencia !== 0 && i.stock_fisico !== null).length;
-  const progreso = totalItems > 0 ? Math.round((itemsContados / totalItems) * 100) : 0;
+  const progreso = totalItems > 0 ? Math.round(((itemsContados + pendingEdits) / totalItems) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -197,11 +198,11 @@ export default function ConteoDetailPage() {
               <Play className="w-4 h-4" /> Iniciar Conteo
             </Button>
           )}
-          <Button onClick={handleSaveItems} disabled={saving || itemsContados === 0} className="gap-2">
+          <Button onClick={handleSaveItems} disabled={saving || pendingEdits === 0} className="gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Guardar Conteos
           </Button>
-          {itemsContados === totalItems && conteo.estado === 'en_progreso' && (
+          {(itemsContados + pendingEdits) >= totalItems && conteo.estado === 'en_progreso' && (
             <Button onClick={() => handleCambiarEstado('finalizado')} variant="outline" className="gap-2">
               <CheckCircle2 className="w-4 h-4" /> Finalizar Conteo
             </Button>

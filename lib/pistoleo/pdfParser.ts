@@ -22,18 +22,18 @@ export async function parseInventoryPdf(buffer: Buffer): Promise<InventoryItem[]
       if (line.match(/^(Reporte|Fecha|Extreme|Bodega|Conteo|Producto|Ubicación|Existencias|Unidades|Página|\d{1,2}\/\d{1,2}\/\d{4})/i)) { i++; continue; }
 
       // Match UPC pattern: alphanumeric code followed by space and parenthesis
-      const codeMatch = line.match(/^([A-Z0-9]{6,})\s*\((.*)/);
+      const codeMatch = line.match(/^([A-Za-z0-9]{4,})\s*\((.*)/);
       
       if (codeMatch) {
         const upc = codeMatch[1];
         let description = codeMatch[2];
         
         // Check if quantity is on same line
-        const qtyMatchSameLine = line.match(/\)(\d+\.\d{2})\s*Unidad/);
+        const qtyMatchSameLine = line.match(/\)(\d+[\d,]*\.?\d*)\s*Unidad/);
         if (qtyMatchSameLine) {
-          const quantity = parseFloat(qtyMatchSameLine[1]);
+          const quantity = parseFloat(qtyMatchSameLine[1].replace(',', '.'));
           // Remove the quantity part from description
-          description = description.replace(/\)(\d+\.\d{2})\s*Unidad$/, ')').trim();
+          description = description.replace(/\)[\d,]+\.?\d*\s*Unidad$/, ')').trim();
           items.push({ upc, description: cleanDescription(description), quantity });
           i++;
           continue;
@@ -48,9 +48,9 @@ export async function parseInventoryPdf(buffer: Buffer): Promise<InventoryItem[]
           if (!nextLine) { i++; continue; }
           
           // Check for quantity line
-          const qtyMatch = nextLine.match(/^(\d+\.\d{2})\s*Unidad$/);
+          const qtyMatch = nextLine.match(/^(\d+[\d,]*\.?\d*)\s*Unidad/);
           if (qtyMatch) {
-            const quantity = parseFloat(qtyMatch[1]);
+            const quantity = parseFloat(qtyMatch[1].replace(',', '.'));
             const fullDesc = descLines.join(' ').trim();
             items.push({ upc, description: cleanDescription(fullDesc), quantity });
             i++;
@@ -63,7 +63,7 @@ export async function parseInventoryPdf(buffer: Buffer): Promise<InventoryItem[]
           }
           
           // Check for next UPC pattern (start of next item)
-          if (nextLine.match(/^[A-Z0-9]{6,}\s*\(/)) {
+          if (nextLine.match(/^[A-Za-z0-9]{4,}\s*\(/)) {
             break;
           }
           

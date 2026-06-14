@@ -6,11 +6,11 @@ import { Button } from '@/components/atoms/Button';
 import {
   Package,
   AlertTriangle,
-  TrendingUp,
   ClipboardList,
   Plus,
   RefreshCw,
   Loader2,
+  Eye,
 } from 'lucide-react';
 
 interface Stats {
@@ -43,9 +43,8 @@ export default function InventarioDashboard() {
 
   const kpis = stats ? [
     { label: 'Total Productos', value: stats.totalProductos.toLocaleString(), change: null as string | null, changeType: 'neutral' as const, icon: <Package className="w-6 h-6" />, color: 'bg-blue-500', href: '#' },
-    { label: 'Stock Total (unid.)', value: stats.totalStock.toLocaleString(), change: null as string | null, changeType: 'positive' as const, icon: <Package className="w-6 h-6" />, color: 'bg-green-500', href: '/inventario/reportes/stock' },
+    { label: 'Stock Total (unid.)', value: stats.totalStock.toLocaleString(), change: null as string | null, changeType: 'positive' as const, icon: <Package className="w-6 h-6" />, color: 'bg-green-500', href: '#' },
     { label: 'Alertas Stock Bajo', value: stats.stockBajo.toString(), change: `${stats.stockCritico} críticas`, changeType: 'negative' as const, icon: <AlertTriangle className="w-6 h-6" />, color: 'bg-red-500', href: '#' },
-    { label: 'Valorizado Stock', value: `$${stats.totalValor.toLocaleString('es-CL')}`, change: null as string | null, changeType: 'neutral' as const, icon: <TrendingUp className="w-6 h-6" />, color: 'bg-purple-500', href: '/inventario/reportes/valorizado' },
   ] : [];
 
   return (
@@ -74,10 +73,10 @@ export default function InventarioDashboard() {
           <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
         </div>
       ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {kpis.map((kpi) => (
           kpi.href === '#' ? (
-            <div className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+            <div key={kpi.label} className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{kpi.label}</p>
@@ -136,19 +135,19 @@ export default function InventarioDashboard() {
             <p className="font-medium text-neutral-900 dark:text-white">Nuevo Conteo</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Inventario físico</p>
           </Link>
-          <Link href="/inventario/reportes/stock" className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 transition-colors group">
+          <Link href="/inventario/conteos" className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 transition-colors group">
             <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Package className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <Eye className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
-            <p className="font-medium text-neutral-900 dark:text-white">Reporte de Stock</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Existencias actuales</p>
+            <p className="font-medium text-neutral-900 dark:text-white">Ver Conteos</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Revisión de inventario físico</p>
           </Link>
-          <Link href="/inventario/reportes/valorizado" className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 transition-colors group">
+          <Link href="/inventario/reportes/kardex" className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 transition-colors group">
             <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <ClipboardList className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="font-medium text-neutral-900 dark:text-white">Stock Valorizado</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Valor total del inventario</p>
+            <p className="font-medium text-neutral-900 dark:text-white">Kardex</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Historial de movimientos</p>
           </Link>
         </div>
       </div>

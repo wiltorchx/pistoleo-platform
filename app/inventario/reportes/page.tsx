@@ -2,29 +2,22 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { FileText, BarChart3, TrendingUp, ClipboardList, ArrowRight } from 'lucide-react';
+import { BarChart3, ClipboardList, ArrowRight, Eye } from 'lucide-react';
 
 const reportes = [
-  {
-    title: 'Reporte de Stock',
-    description: 'Listado completo del inventario con stock actual, mínimo y valorizado',
-    icon: ClipboardList,
-    color: 'bg-blue-500',
-    href: '/inventario/reportes/stock',
-  },
-  {
-    title: 'Stock Valorizado',
-    description: 'Valor económico del inventario por producto, categoría y ubicación',
-    icon: TrendingUp,
-    color: 'bg-green-500',
-    href: '/inventario/reportes/valorizado',
-  },
   {
     title: 'Kardex',
     description: 'Historial completo de movimientos con filtros por fecha, producto y ubicación',
     icon: BarChart3,
     color: 'bg-purple-500',
     href: '/inventario/reportes/kardex',
+  },
+  {
+    title: 'Conteos Realizados',
+    description: 'Revisión de inventario físico por lote, con diferencias y ajustes',
+    icon: Eye,
+    color: 'bg-blue-500',
+    href: '/inventario/conteos',
   },
 ];
 
