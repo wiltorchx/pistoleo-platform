@@ -47,7 +47,7 @@ function LoginForm() {
           </div>
         )}
 
-        <Input label="Email" type="email" error={errors.email?.message} {...register('email')} />
+        <Input label="Email" type="text" error={errors.email?.message} {...register('email')} />
         <Input label="Contraseña" type="password" error={errors.password?.message} {...register('password')} />
 
         <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
