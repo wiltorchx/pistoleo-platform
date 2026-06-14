@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { Barcode } from 'lucide-react'
 import { APP_NAME } from '@/shared/utils/constants'
