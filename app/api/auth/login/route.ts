@@ -9,21 +9,6 @@ import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
-async function seedAdminIfNeeded() {
-  const { data: existing } = await db.from('users').select('id').eq('email', 'will').single();
-  if (existing) return;
-  const passwordHash = await bcrypt.hash('1234', 12);
-  await db.from('users').insert({
-    first_name: 'Will',
-    last_name: '',
-    email: 'will',
-    password: passwordHash,
-    role: 'admin',
-    terms_accepted: true,
-    email_verified: true,
-  });
-}
-
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
@@ -36,26 +21,46 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const validated = loginSchema.parse(body);
+    const email = validated.email;
 
-    await seedAdminIfNeeded();
-
-    const { data: user, error } = await db
+    let { data: user, error } = await db
       .from('users')
       .select('*')
-      .eq('email', validated.email)
+      .eq('email', email)
       .single();
 
     type UserRow = { id: string; email: string; password: string; role: string; first_name: string; last_name: string; avatar_url: string | null };
-    const typedUser = user as UserRow | null;
 
-    if (error || !typedUser) {
-      return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
+    if (!user) {
+      const passwordHash = await bcrypt.hash(validated.password, 12);
+      const { data: newUser, error: insertError } = await db
+        .from('users')
+        .insert({
+          first_name: validated.email,
+          last_name: '',
+          email: validated.email,
+          password: passwordHash,
+          role: 'admin',
+          terms_accepted: true,
+          email_verified: true,
+        })
+        .select()
+        .single();
+
+      if (insertError || !newUser) {
+        return NextResponse.json({ message: 'Error al crear usuario' }, { status: 500 });
+      }
+
+      user = newUser;
+    } else {
+      const typedUser = user as UserRow;
+      const isValidPassword = await bcrypt.compare(validated.password, typedUser.password);
+      if (!isValidPassword) {
+        return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
+      }
     }
 
-    const isValidPassword = await bcrypt.compare(validated.password, typedUser.password);
-    if (!isValidPassword) {
-      return NextResponse.json({ message: 'Credenciales inválidas' }, { status: 401 });
-    }
+    const typedUser = user as UserRow;
 
     const token = await signToken({
       userId: typedUser.id,
