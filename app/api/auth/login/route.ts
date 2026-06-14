@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       const { data: newUser, error: insertError } = await admin
         .from('users')
         .insert({
-          first_name: validated.email,
+          first_name: validated.email.split('@')[0],
           last_name: '',
           email: validated.email,
           password: passwordHash,

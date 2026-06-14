@@ -51,7 +51,7 @@ export function Header() {
               <>
                 <Link href="/dashboard" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600">
                   <User className="w-4 h-4" />
-                  {user.firstName}
+                  {user.firstName?.includes('@') ? user.email : user.firstName}
                 </Link>
                 <button onClick={handleLogout} className="flex items-center gap-1 text-sm text-gray-500 hover:text-danger transition-colors">
                   <LogOut className="w-4 h-4" />
