@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { parseInventoryPdf } from '@/lib/pistoleo/pdfParser';
 import { parseInventoryExcel } from '@/lib/pistoleo/excelParser';
 import { parseUpcMaster } from '@/lib/pistoleo/upcMasterParser';
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         const name = formData.get('name') as string;
         const userId = formData.get('userId') as string;
 
-        const { data: batch, error } = await db
+        const { data: batch, error } = await adminDb
           .from('pistoleo_batches')
           .insert({ name, created_by: userId, status: 'pending' })
           .select()
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
-        const { data: batch, error: batchError } = await db
+        const { data: batch, error: batchError } = await adminDb
           .from('pistoleo_batches')
           .select('id')
           .eq('id', batchId)
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
           status: (Number(item.expectedQuantity) || 0) > 0 ? 'missing' : 'complete',
         }));
 
-        const { error: upsertError } = await db
+        const { error: upsertError } = await adminDb
           .from('pistoleo_inventory')
           .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
 
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
         // Validate batch exists
-        const { data: batch, error: batchError } = await db
+        const { data: batch, error: batchError } = await adminDb
           .from('pistoleo_batches')
           .select('id')
           .eq('id', batchId)
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
           status: (Number(item.quantity) || 0) > 0 ? 'missing' : 'complete',
         }));
 
-        const { error: upsertError } = await db
+        const { error: upsertError } = await adminDb
           .from('pistoleo_inventory')
           .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
 
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
         }
 
         // Validate batch exists
-        const { data: batch, error: batchError } = await db
+        const { data: batch, error: batchError } = await adminDb
           .from('pistoleo_batches')
           .select('id')
           .eq('id', batchId)
@@ -190,7 +190,7 @@ export async function POST(req: Request) {
           }));
 
           // Use upsert to handle both new and existing inventory items
-          const { error: upsertError, data } = await db
+          const { error: upsertError, data } = await adminDb
             .from('pistoleo_inventory')
             .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
 
@@ -221,7 +221,7 @@ export async function POST(req: Request) {
 
         try {
           // Delete inventory items only (keep the batch)
-          const { error: invError } = await db
+          const { error: invError } = await adminDb
             .from('pistoleo_inventory')
             .delete()
             .eq('batch_id', batchId);
@@ -245,7 +245,7 @@ export async function POST(req: Request) {
         }
 
         // Validate batch exists
-        const { data: batch, error: batchError } = await db
+        const { data: batch, error: batchError } = await adminDb
           .from('pistoleo_batches')
           .select('id')
           .eq('id', batchId)
@@ -275,7 +275,7 @@ export async function POST(req: Request) {
             status: (Number(item.expectedQuantity) || 0) > 0 ? 'missing' : 'complete',
           }));
 
-          const { error: upsertError } = await db
+          const { error: upsertError } = await adminDb
             .from('pistoleo_inventory')
             .upsert(inventoryDocs, { onConflict: 'batch_id,upc' });
 
@@ -304,7 +304,7 @@ export async function POST(req: Request) {
         }
 
         // Validate batch access
-        const { data: batch, error: batchError } = await db
+        const { data: batch, error: batchError } = await adminDb
           .from('pistoleo_batches')
           .select('id, created_by')
           .eq('id', batchId)
@@ -320,7 +320,7 @@ export async function POST(req: Request) {
         const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
         if (!hasAccess) {
           // Check if user has scanned this batch before
-          const { data: existingScan } = await db
+          const { data: existingScan } = await adminDb
             .from('pistoleo_scans')
             .select('id')
             .eq('batch_id', batchId)
@@ -335,7 +335,7 @@ export async function POST(req: Request) {
 
         const updatedInventory = await processScan(batchId, upc);
 
-        await db.from('pistoleo_scans').insert({
+        await adminDb.from('pistoleo_scans').insert({
           batch_id: batchId,
           upc,
           user_id: authUser.id,
@@ -352,7 +352,7 @@ export async function POST(req: Request) {
         }
 
         // Validate batch access
-        const { data: batch, error: batchError } = await db
+        const { data: batch, error: batchError } = await adminDb
           .from('pistoleo_batches')
           .select('id, created_by')
           .eq('id', batchId)
@@ -370,7 +370,7 @@ export async function POST(req: Request) {
         }
 
         // Find the inventory item
-        const { data: inventory, error: invError } = await db
+        const { data: inventory, error: invError } = await adminDb
           .from('pistoleo_inventory')
           .select('*')
           .eq('batch_id', batchId)
@@ -400,7 +400,7 @@ export async function POST(req: Request) {
           status = 'over';
         }
 
-        const { data: updated, error: updateError } = await db
+        const { data: updated, error: updateError } = await adminDb
           .from('pistoleo_inventory')
           .update({ actual_quantity: newActual, status })
           .eq('id', typedInventory.id)
@@ -410,7 +410,7 @@ export async function POST(req: Request) {
         if (updateError) throw updateError;
 
         // Also delete the latest scan record for this user/batch/upc
-        const { data: latestScan } = await db
+        const { data: latestScan } = await adminDb
           .from('pistoleo_scans')
           .select('id')
           .eq('batch_id', batchId)
@@ -421,7 +421,7 @@ export async function POST(req: Request) {
           .single();
 
         if (latestScan) {
-          await db.from('pistoleo_scans').delete().eq('id', latestScan.id);
+          await adminDb.from('pistoleo_scans').delete().eq('id', latestScan.id);
         }
 
         return NextResponse.json({

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { InventoryRow } from '@/lib/supabase-types';
 
@@ -16,7 +16,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const { data: batch, error: batchError } = await db
+    const { data: batch, error: batchError } = await adminDb
       .from('pistoleo_batches')
       .select('*')
       .eq('id', id)
@@ -35,7 +35,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { data: inventory, error: invError } = await db
+    const { data: inventory, error: invError } = await adminDb
       .from('pistoleo_inventory')
       .select('*')
       .eq('batch_id', id);

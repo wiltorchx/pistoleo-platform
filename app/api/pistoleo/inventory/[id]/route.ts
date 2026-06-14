@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { InventoryWithBatch } from '@/lib/supabase-types';
 
@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 });
     }
 
-    const { data: inventory } = await db
+    const { data: inventory } = await adminDb
       .from('pistoleo_inventory')
       .select('*, pistoleo_batches!inner(created_by)')
       .eq('id', itemId)
@@ -49,7 +49,7 @@ export async function PATCH(
       status = 'over';
     }
 
-    const { data: updated, error } = await db
+    const { data: updated, error } = await adminDb
       .from('pistoleo_inventory')
       .update({ actual_quantity: actualQuantity, status })
       .eq('id', itemId)

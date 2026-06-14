@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { BatchRow } from '@/lib/supabase-types';
 
 export async function GET() {
   try {
-    const { data: batches, error } = await db
+    const { data: batches, error } = await adminDb
       .from('pistoleo_batches')
       .select('*')
       .order('created_at', { ascending: false });
@@ -39,23 +39,21 @@ export async function DELETE(req: Request) {
     }
 
     // Delete inventory items first (FK cascade should handle this, but being explicit)
-    const { error: invError } = await db
+    const { error: invError } = await adminDb
       .from('pistoleo_inventory')
       .delete()
       .eq('batch_id', batchId);
 
     if (invError) throw invError;
 
-    // Delete scans
-    const { error: scansError } = await db
+    const { error: scansError } = await adminDb
       .from('pistoleo_scans')
       .delete()
       .eq('batch_id', batchId);
 
     if (scansError) throw scansError;
 
-    // Delete batch
-    const { error: batchError } = await db
+    const { error: batchError } = await adminDb
       .from('pistoleo_batches')
       .delete()
       .eq('id', batchId);

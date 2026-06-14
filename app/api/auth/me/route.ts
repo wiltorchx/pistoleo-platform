@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/jwt';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +19,7 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    const { data: user, error } = await db
+    const { data: user, error } = await adminDb
       .from('users')
       .select('id, first_name, last_name, email, role, avatar_url')
       .eq('id', payload.userId)

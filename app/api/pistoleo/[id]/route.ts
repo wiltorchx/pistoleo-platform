@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminDb } from '@/lib/supabase-admin';
 import { getAuthenticatedUser } from '@/lib/api-auth';
 import { BatchRow, InventoryRow } from '@/lib/supabase-types';
 
@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    const { data: batch, error } = await db
+    const { data: batch, error } = await adminDb
       .from('pistoleo_batches')
       .select('id, created_by')
       .eq('id', id)
@@ -42,7 +42,7 @@ export async function PATCH(
     if (signature) updateData.signature = signature;
     if (closedAt) updateData.closed_at = closedAt;
 
-    const { data: updatedBatch, error: updateError } = await db
+    const { data: updatedBatch, error: updateError } = await adminDb
       .from('pistoleo_batches')
       .update(updateData)
       .eq('id', id)
@@ -72,7 +72,7 @@ export async function GET(
     const { id } = await params;
 
     // Check access
-    const { data: batch } = await db
+    const { data: batch } = await adminDb
       .from('pistoleo_batches')
       .select('id, created_by')
       .eq('id', id)
@@ -87,7 +87,7 @@ export async function GET(
     const hasAccess = authUser.role === 'admin' || typedBatch.created_by === authUser.id;
     if (!hasAccess) {
       // Check if user has scanned this batch
-      const { data: existingScan } = await db
+      const { data: existingScan } = await adminDb
         .from('pistoleo_scans')
         .select('id')
         .eq('batch_id', id)
@@ -100,7 +100,7 @@ export async function GET(
       }
     }
 
-    const { data: items, error } = await db
+    const { data: items, error } = await adminDb
       .from('pistoleo_inventory')
       .select('*')
       .eq('batch_id', id);

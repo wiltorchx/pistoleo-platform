@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-let _admin: ReturnType<typeof createClient> | null = null;
+let _admin: SupabaseClient | null = null;
 
 export function getAdminClient() {
   if (_admin) return _admin;
@@ -22,8 +22,8 @@ export function getAdminClient() {
   return _admin;
 }
 
-export const adminDb = new Proxy({} as ReturnType<typeof createClient>, {
+export const adminDb = new Proxy({} as SupabaseClient, {
   get(_target, prop) {
-    return getAdminClient()[prop as keyof ReturnType<typeof createClient>];
+    return getAdminClient()[prop as keyof SupabaseClient];
   },
-}) as ReturnType<typeof createClient>;
+}) as SupabaseClient;

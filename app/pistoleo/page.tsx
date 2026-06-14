@@ -35,6 +35,8 @@ export default function PistoleoDashboard() {
       try {
         const res = await fetch('/api/pistoleo/batches');
         const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || 'Error al cargar lotes');
+        if (!Array.isArray(data)) throw new Error('Formato inválido');
         setBatches(data);
       } catch (e) {
         console.error(e);
