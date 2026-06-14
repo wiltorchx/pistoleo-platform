@@ -31,14 +31,45 @@ export async function POST(req: Request) {
 
     if (conteoError) throw conteoError;
 
-    const itemsToInsert = parsed.items.map(item => ({
-      conteo_id: conteo.id,
-      codigo: item.codigo,
-      nombre: item.descripcion,
-      stock_sistema: 0,
-      stock_fisico: item.cantidad,
-      estado: 'contado' as const,
-    }));
+    const codigos = [...new Set(parsed.items.map(i => i.codigo))];
+
+    const { data: productosExistentes } = await adminDb
+      .from('inventario_productos')
+      .select('id, codigo')
+      .in('codigo', codigos);
+
+    const prodMap = new Map((productosExistentes || []).map(p => [p.codigo, p.id]));
+
+    const itemsToInsert: Record<string, unknown>[] = [];
+
+    for (const item of parsed.items) {
+      let productoId = prodMap.get(item.codigo);
+
+      if (!productoId) {
+        const { data: newProd, error: newProdError } = await adminDb
+          .from('inventario_productos')
+          .insert({
+            codigo: item.codigo,
+            nombre: item.descripcion || item.codigo,
+            unidad_medida: 'unidad',
+            activo: true,
+          })
+          .select('id')
+          .single();
+
+        if (newProdError) throw newProdError;
+        productoId = newProd.id;
+        prodMap.set(item.codigo, productoId);
+      }
+
+      itemsToInsert.push({
+        conteo_id: conteo.id,
+        producto_id: productoId,
+        stock_sistema: 0,
+        stock_fisico: item.cantidad,
+        estado: 'contado',
+      });
+    }
 
     const { error: itemsError } = await adminDb
       .from('inventario_conteo_items')
