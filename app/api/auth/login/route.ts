@@ -72,9 +72,21 @@ export async function POST(request: Request) {
 
     const typedUser = user as UserRow;
 
+    const dedupe = (v: string) => {
+      const parts = v.split('@');
+      if (parts.length <= 2) return v;
+      const firstPart = parts[0];
+      const rest = v.substring(v.indexOf('@') + 1);
+      const secondAt = rest.indexOf('@');
+      if (secondAt === -1) return v;
+      const middle = rest.substring(0, secondAt);
+      const idx = middle.indexOf(firstPart);
+      if (idx > 0) return firstPart + '@' + middle.substring(0, idx);
+      return parts[0] + '@' + middle;
+    };
     if (typedUser.email && (typedUser.email.match(/@/g) || []).length > 1) {
-      const cleanEmail = typedUser.email.split('@').slice(0, 2).join('@');
-      const cleanName = typedUser.first_name?.split('@').slice(0, 2).join('@') || cleanEmail.split('@')[0];
+      const cleanEmail = dedupe(typedUser.email);
+      const cleanName = dedupe(typedUser.first_name || '');
       await admin.from('users').update({ email: cleanEmail, first_name: cleanName }).eq('id', typedUser.id);
       typedUser.email = cleanEmail;
       typedUser.first_name = cleanName;

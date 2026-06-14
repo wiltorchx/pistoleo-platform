@@ -32,13 +32,20 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    const sanitize = (v: string) => {
+    const dedupe = (v: string) => {
       const parts = v.split('@');
-      if (parts.length > 2) return parts.slice(0, 2).join('@');
-      return v;
+      if (parts.length <= 2) return v;
+      const firstPart = parts[0];
+      const rest = v.substring(v.indexOf('@') + 1);
+      const secondAt = rest.indexOf('@');
+      if (secondAt === -1) return v;
+      const middle = rest.substring(0, secondAt);
+      const idx = middle.indexOf(firstPart);
+      if (idx > 0) return firstPart + '@' + middle.substring(0, idx);
+      return parts[0] + '@' + middle;
     };
-    const cleanEmail = sanitize(typedUser.email);
-    const cleanName = sanitize(typedUser.first_name);
+    const cleanEmail = dedupe(typedUser.email);
+    const cleanName = dedupe(typedUser.first_name);
 
     if (cleanEmail !== typedUser.email || cleanName !== typedUser.first_name) {
       await adminDb.from('users').update({ email: cleanEmail, first_name: cleanName }).eq('id', typedUser.id);
