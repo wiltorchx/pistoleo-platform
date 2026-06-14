@@ -66,18 +66,7 @@ export default function DashboardPage() {
           <p className="mt-1 text-gray-600 dark:text-gray-400">Bienvenido al Panel de Pistoleo Extreme</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Link
-            href="/pistoleo?wizard=true"
-            className="bg-white dark:bg-surface-dark-elevated rounded-2xl p-6 shadow-card border border-gray-100 dark:border-gray-800 hover:border-primary-600 transition-colors group"
-          >
-            <Package className="w-8 h-8 text-primary-600 mb-3" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-primary-600">
-              Sistema de Pistoleo
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Escaneo y procesamiento de mercadería</p>
-          </Link>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Link
             href="/inventario"
             className="bg-white dark:bg-surface-dark-elevated rounded-2xl p-6 shadow-card border border-gray-100 dark:border-gray-800 hover:border-primary-600 transition-colors group"
