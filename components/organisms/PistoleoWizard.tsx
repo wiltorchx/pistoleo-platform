@@ -127,14 +127,13 @@ export const PistoleoWizard = ({ onClose, onComplete, userId, initialBatchId }: 
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-neutral-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
-          <h2 className="text-xl font-bold">{t('wizard.title')}</h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600">✕</button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white dark:bg-neutral-900 w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+        <div className="p-4 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold">{t('wizard.title')}</h2>
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
         </div>
-
-        <div className="p-8">
+        <div className="p-4 sm:p-6 overflow-y-auto">
           {step === 1 && (
             <div className="space-y-6">
               <div>

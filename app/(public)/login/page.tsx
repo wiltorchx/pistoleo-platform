@@ -24,9 +24,8 @@ function LoginForm() {
   const onSubmit = async (data: LoginInput) => {
     setError('');
     try {
-      const role = await login(data.email, data.password);
-      if (role === 'admin') router.push('/admin');
-      else router.push('/dashboard');
+      await login(data.email, data.password);
+      router.push('/dashboard');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');

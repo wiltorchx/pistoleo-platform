@@ -304,35 +304,39 @@ export default function PistoleoScanner() {
             </div>
             <p className="text-neutral-500">Lote: {id}</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button 
+              size="sm"
               variant={isCameraActive ? 'primary' : 'outline'} 
               onClick={() => setIsCameraActive(!isCameraActive)}
             >
               {isCameraActive ? 'Cerrar Cámara' : 'Abrir Cámara'}
             </Button>
             <Button 
+              size="sm"
               variant="outline" 
               className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
               onClick={() => window.open(`/api/pistoleo/${id}/report`, '_blank')}
             >
-              Descargar Reporte
+              Reporte
             </Button>
             <Button 
+              size="sm"
               variant="ghost" 
               className="text-red-500 hover:text-red-700"
               onClick={() => router.push(`/pistoleo/${id}/close`)}
             >
-              Cerrar Sesión
+              Cerrar
             </Button>
             <Button 
+              size="sm"
               variant={industrialMode ? 'primary' : 'outline'} 
               className={industrialMode ? 'bg-yellow-400 text-black border-yellow-400' : ''}
               onClick={() => setIndustrialMode(!industrialMode)}
             >
-              {industrialMode ? 'Modo Normal' : 'Modo Industrial'}
+              {industrialMode ? 'Modo Normal' : 'Industrial'}
             </Button>
-            <Button variant="ghost" onClick={() => window.history.back()}>Volver</Button>
+            <Button size="sm" variant="ghost" onClick={() => window.history.back()}>Volver</Button>
           </div>
         </div>
         
