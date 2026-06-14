@@ -68,7 +68,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link
-            href="/pistoleo"
+            href="/pistoleo?wizard=true"
             className="bg-white dark:bg-surface-dark-elevated rounded-2xl p-6 shadow-card border border-gray-100 dark:border-gray-800 hover:border-primary-600 transition-colors group"
           >
             <Package className="w-8 h-8 text-primary-600 mb-3" />

@@ -48,9 +48,16 @@ export default function PistoleoDashboard() {
   }, []);
 
   // Handle clear parameter - open wizard at file upload step with existing batchId
+  // Handle wizard parameter - open wizard for new scan
   useEffect(() => {
     const clearBatchId = searchParams.get('clear');
-    if (clearBatchId && user && handledClearRef.current !== clearBatchId) {
+    const wizardParam = searchParams.get('wizard');
+    
+    if (wizardParam) {
+      // Open wizard for new scan
+      setIsWizardOpen(true);
+      handledClearRef.current = null;
+    } else if (clearBatchId && user && handledClearRef.current !== clearBatchId) {
       handledClearRef.current = clearBatchId;
       setInitialBatchId(clearBatchId);
       setIsWizardOpen(true);
