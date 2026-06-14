@@ -54,23 +54,34 @@ export default function NuevoConteoPage() {
     }
   };
 
-  const showPreview = (f: File) => {
+  const showPreview = async (f: File) => {
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) return;
-      const previewItems = lines.slice(1, 6).map(line => {
-        const cols = line.split(';');
-        return { codigo: cols[0]?.trim() || '', descripcion: cols[1]?.trim() || '', cantidad: parseInt(cols[2]) || 0 };
-      });
-      setPreview(previewItems);
-    };
     if (f.name.endsWith('.csv') || f.type === 'text/csv' || f.type === 'text/plain') {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(l => l.trim());
+        if (lines.length < 2) return;
+        const previewItems = lines.slice(1, 6).map(line => {
+          const cols = line.split(';');
+          return { codigo: cols[0]?.trim() || '', descripcion: cols[1]?.trim() || '', cantidad: parseInt(cols[2]) || 0 };
+        });
+        setPreview(previewItems);
+      };
       reader.readAsText(f);
-    } else {
-      setPreview([{ codigo: '...', descripcion: 'Archivo procesado en el servidor', cantidad: 0 }]);
+      return;
+    }
+    setPreview(null);
+    const body = new FormData();
+    body.append('file', f);
+    try {
+      const res = await fetch('/inventario/api/conteos/preview', { method: 'POST', body });
+      const data = await res.json();
+      if (res.ok) {
+        setPreview(data.preview);
+      }
+    } catch {
+      setPreview([{ codigo: '...', descripcion: 'Error al obtener vista previa', cantidad: 0 }]);
     }
   };
 
