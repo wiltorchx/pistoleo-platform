@@ -60,7 +60,7 @@ export async function GET(
     ];
 
     const headerRow = worksheet.addRow(columns.map(c => c.header));
-    headerRow.eachCell((cell) => {
+    headerRow.eachCell((cell: any) => {
       cell.style = headerStyle;
     });
 
@@ -88,7 +88,7 @@ export async function GET(
     const totalActual = (inventory || []).reduce((sum, i) => sum + i.actual_quantity, 0);
 
     const totalsRow = worksheet.addRow(['', '', totalExpected, totalActual, totalActual - totalExpected]);
-    totalsRow.eachCell((cell) => {
+    totalsRow.eachCell((cell: any) => {
       cell.font = { bold: true };
     });
 
