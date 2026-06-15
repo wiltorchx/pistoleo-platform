@@ -1,4 +1,3 @@
-import pdfParse from 'pdf-parse';
 import * as ExcelJS from 'exceljs';
 
 export interface ParsedItem {
@@ -88,6 +87,7 @@ export async function parseFile(buffer: Buffer, fileName: string, mimeType: stri
 }
 
 async function parsePdf(buffer: Buffer, fileName: string): Promise<ParseResult> {
+  const pdfParse = (await import('pdf-parse')).default;
   const data = await pdfParse(buffer);
   const text = data.text;
   const lines = text.split('\n');
