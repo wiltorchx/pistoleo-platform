@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/atoms/Button';
-import { BookOpen, LogOut, Menu, Moon, Sun, User, X } from 'lucide-react';
+import { BookOpen, LogOut, Menu, Moon, Package, Sun, User, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -40,6 +40,10 @@ export function Header() {
             </Link>
             <Link href="/tutors" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 transition-colors">
               Tutores
+            </Link>
+            <Link href="/pistoleo" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 transition-colors flex items-center gap-1">
+              <Package className="w-4 h-4" />
+              Pistoleo
             </Link>
 
             {mounted && (
@@ -89,6 +93,10 @@ export function Header() {
             </Link>
             <Link href="/tutors" className="block text-sm font-medium text-gray-700 dark:text-gray-300 py-2" onClick={() => setMenuOpen(false)}>
               Tutores
+            </Link>
+            <Link href="/pistoleo" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 py-2" onClick={() => setMenuOpen(false)}>
+              <Package className="w-4 h-4" />
+              Pistoleo
             </Link>
             <div className="flex items-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
               {user ? (

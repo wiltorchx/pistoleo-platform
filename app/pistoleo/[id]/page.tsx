@@ -1,26 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/atoms/Button';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
-
-interface BarcodeDetectorQueryResult {
-  rawValue: string;
-  format: string;
-  boundingBox: { x: number; y: number; width: number; height: number };
-  cornerPoints: Array<{ x: number; y: number }>;
-}
-
-interface BarcodeDetector {
-  detect(videoElement: HTMLVideoElement): Promise<BarcodeDetectorQueryResult[]>;
-}
-
-declare global {
-  interface Window {
-    BarcodeDetector: new (options?: { formats: string[] }) => BarcodeDetector;
-  }
-}
 
 interface InventoryItem {
   _id: string;
@@ -44,11 +27,9 @@ export default function PistoleoScanner() {
   const { id } = useParams();
   const [summary, setSummary] = useState<ComparisonSummary | null>(null);
   const [lastScanned, setLastScanned] = useState<InventoryItem | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
   const [scanFeedback, setScanFeedback] = useState<'success' | 'error' | 'warning' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -113,52 +94,6 @@ export default function PistoleoScanner() {
     }
   }
 
-  useEffect(() => {
-    if (isCameraActive && videoRef.current) {
-      const videoEl = videoRef.current;
-      async function startCamera() {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
-          });
-          if (videoEl) {
-            videoEl.srcObject = stream;
-          }
-          
-          // BarcodeDetector API check
-            if ('BarcodeDetector' in window) {
-              const detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'qr_code'] });
-            
-            const scanLoop = async () => {
-              if (!videoEl || !isCameraActive) return;
-              try {
-                const barcodes = await detector.detect(videoEl);
-                if (barcodes.length > 0) {
-                  handleScan(barcodes[0].rawValue);
-                }
-              } catch (_e) {
-                console.error('Scan error:', _e);
-              }
-              requestAnimationFrame(scanLoop);
-            };
-            scanLoop();
-          } else {
-            console.warn('BarcodeDetector API not supported in this browser.');
-          }
-        } catch (_e) {
-          console.error('Camera access denied:', _e);
-        }
-      }
-      startCamera();
-    
-      return () => {
-        if (videoEl && videoEl.srcObject) {
-          (videoEl.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        }
-      };
-    }
-  }, [isCameraActive, handleScan]);
-
   const progress = summary 
     ? (summary.complete / summary.totalItems) * 100 
     : 0;
@@ -178,12 +113,6 @@ export default function PistoleoScanner() {
             <p className="text-neutral-500">Batch ID: {id}</p>
           </div>
           <div className="flex gap-3">
-            <Button 
-              variant={isCameraActive ? 'primary' : 'outline'} 
-              onClick={() => setIsCameraActive(!isCameraActive)}
-            >
-              {isCameraActive ? 'Close Camera' : 'Open Camera'}
-            </Button>
             <Button 
               variant="outline" 
               className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
@@ -242,17 +171,6 @@ export default function PistoleoScanner() {
             </div>
           </div>
         </div>
-
-        {/* Camera View */}
-        {isCameraActive && (
-          <div className="mb-8 bg-black rounded-3xl overflow-hidden relative aspect-video max-w-2xl mx-auto shadow-2xl">
-            <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline></video>
-            <div className="absolute inset-0 border-2 border-primary-600/50 m-20 rounded-lg pointer-events-none" />
-            <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-full text-xs">
-              Camera Active
-            </div>
-          </div>
-        )}
 
         {/* Last Scanned Item */}
         {lastScanned && (
