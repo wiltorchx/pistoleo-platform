@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/atoms/Button';
-import { BookOpen, LogOut, Menu, Moon, Package, Sun, User, X } from 'lucide-react';
+import { LogOut, Menu, Moon, Package, Sun, User, X, Scan, Warehouse } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -30,20 +30,18 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2 text-xl font-bold text-primary-600">
-            <BookOpen className="w-6 h-6" />
-            <span>LMS</span>
+            <Package className="w-6 h-6" />
+            <span>Pistoleo</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/courses" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 transition-colors">
-              Cursos
-            </Link>
-            <Link href="/tutors" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 transition-colors">
-              Tutores
-            </Link>
             <Link href="/pistoleo" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 transition-colors flex items-center gap-1">
-              <Package className="w-4 h-4" />
-              Pistoleo
+              <Scan className="w-4 h-4" />
+              Dashboard
+            </Link>
+            <Link href="/inventario" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 transition-colors flex items-center gap-1">
+              <Warehouse className="w-4 h-4" />
+              Inventario
             </Link>
 
             {mounted && (
@@ -86,17 +84,15 @@ export function Header() {
           </button>
         </div>
 
-        {menuOpen && (
+          {menuOpen && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4 space-y-3">
-            <Link href="/courses" className="block text-sm font-medium text-gray-700 dark:text-gray-300 py-2" onClick={() => setMenuOpen(false)}>
-              Cursos
-            </Link>
-            <Link href="/tutors" className="block text-sm font-medium text-gray-700 dark:text-gray-300 py-2" onClick={() => setMenuOpen(false)}>
-              Tutores
-            </Link>
             <Link href="/pistoleo" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 py-2" onClick={() => setMenuOpen(false)}>
-              <Package className="w-4 h-4" />
-              Pistoleo
+              <Scan className="w-4 h-4" />
+              Dashboard
+            </Link>
+            <Link href="/inventario" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 py-2" onClick={() => setMenuOpen(false)}>
+              <Warehouse className="w-4 h-4" />
+              Inventario
             </Link>
             <div className="flex items-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
               {user ? (

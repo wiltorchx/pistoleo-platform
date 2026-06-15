@@ -8,8 +8,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'LMS - Aprende Inglés y Español',
-  description: 'Plataforma de aprendizaje de idiomas con tutores certificados',
+  title: 'Pistoleo Extreme San Francisco - Control de Inventario',
+  description: 'Sistema inteligente de control de inventario con escaneo de códigos de barras, gestión de lotes y trazabilidad completa.',
 };
 
 export default function RootLayout({
