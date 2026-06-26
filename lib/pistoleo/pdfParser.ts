@@ -1,5 +1,3 @@
-import pdfParse from 'pdf-parse';
-
 export interface InventoryItem {
   upc: string;
   description: string;
@@ -7,6 +5,7 @@ export interface InventoryItem {
 }
 
 export async function parseInventoryPdf(buffer: Buffer): Promise<InventoryItem[]> {
+  const pdfParse = (await import('pdf-parse')).default;
   try {
     const data = await pdfParse(buffer);
     const text = data.text;
